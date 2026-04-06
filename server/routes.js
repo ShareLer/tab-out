@@ -293,15 +293,20 @@ router.get('/stats', (req, res) => {
         try {
           histDb = new Database(TEMP_COPY_PATH, { readonly: true, fileMustExist: true });
 
-          // Pull every URL with its visit count, then aggregate by domain in JS.
-          // We pull a reasonable cap (2000 rows) so the query stays fast.
+          // Pull URLs visited in the last 7 days, counted by visits table
+          // Chrome timestamps = microseconds since Jan 1 1601
+          const CHROME_EPOCH_OFFSET = 11644473600;
+          const sevenDaysAgo = (Math.floor(Date.now() / 1000) + CHROME_EPOCH_OFFSET - 7 * 86400) * 1000000;
+
           const rows = histDb.prepare(`
-            SELECT url, title, visit_count
-            FROM urls
-            WHERE visit_count > 0
+            SELECT u.url, u.title, COUNT(v.id) as visit_count
+            FROM visits v
+            JOIN urls u ON v.url = u.id
+            WHERE v.visit_time > ?
+            GROUP BY u.url
             ORDER BY visit_count DESC
-            LIMIT 2000
-          `).all();
+            LIMIT 500
+          `).all(sevenDaysAgo);
 
           // Aggregate visit counts by hostname (domain)
           const domainMap = {};
