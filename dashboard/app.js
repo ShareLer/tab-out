@@ -848,10 +848,32 @@ function renderDomainCard(group, groupIndex) {
   const isLanding = group.domain === '__landing-pages__';
   const stableId  = 'domain-' + group.domain.replace(/[^a-z0-9]/g, '-');
 
-  // Detect duplicates within this domain group (same URL multiple times)
-  const urlCounts = {};
+  // Detect duplicates within this domain group
+  // Normalize URLs for comparison: strip trailing slash, hash, and sort query params
+  function normalizeUrl(url) {
+    try {
+      const u = new URL(url);
+      u.hash = '';
+      // Remove trailing slash from pathname (but keep "/" alone)
+      if (u.pathname.length > 1 && u.pathname.endsWith('/')) {
+        u.pathname = u.pathname.slice(0, -1);
+      }
+      return u.toString();
+    } catch { return url; }
+  }
+
+  // Map each tab to its normalized URL, then count
+  const normalizedMap = {}; // normalizedUrl -> original url (first seen)
+  const urlCounts = {};     // original url (first seen) -> count
   for (const tab of tabs) {
-    urlCounts[tab.url] = (urlCounts[tab.url] || 0) + 1;
+    const norm = normalizeUrl(tab.url);
+    if (!normalizedMap[norm]) {
+      normalizedMap[norm] = tab.url;
+      urlCounts[tab.url] = 1;
+    } else {
+      // Increment count on the first-seen URL
+      urlCounts[normalizedMap[norm]] = (urlCounts[normalizedMap[norm]] || 1) + 1;
+    }
   }
   const dupeUrls = Object.entries(urlCounts).filter(([, c]) => c > 1);
   const hasDupes = dupeUrls.length > 0;
@@ -870,13 +892,13 @@ function renderDomainCard(group, groupIndex) {
       </span>`
     : '';
 
-  // Page chips — show up to 5, flag duplicates with count and amber color
-  // Deduplicate for display: show each URL once with a (Nx) badge if duplicated
+  // Deduplicate for display using normalized URLs: show each URL once with (Nx) badge
   const seen = new Set();
   const uniqueTabs = [];
   for (const tab of tabs) {
-    if (!seen.has(tab.url)) {
-      seen.add(tab.url);
+    const norm = normalizeUrl(tab.url);
+    if (!seen.has(norm)) {
+      seen.add(norm);
       uniqueTabs.push(tab);
     }
   }
@@ -933,7 +955,7 @@ function renderDomainCard(group, groupIndex) {
       <div class="mission-content">
         <div class="mission-top">
           <span class="mission-name">${isLanding ? 'Landing pages' : friendlyDomain(group.domain)}</span>
-          <span class="mission-tag neutral">${isLanding ? 'Homepages & feeds' : 'Domain'}</span>
+          ${isLanding ? '<span class="mission-tag neutral">Homepages & feeds</span>' : ''}
           ${tabBadge}
           ${dupeBadge}
         </div>
