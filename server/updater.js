@@ -9,7 +9,7 @@ const path = require('path');
 
 const REPO_URL = 'https://github.com/zarazhangrui/tab-out';
 const API_URL = 'https://api.github.com/repos/zarazhangrui/tab-out/commits/main';
-const CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
+const CHECK_INTERVAL = 48 * 60 * 60 * 1000; // 48 hours
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 
 let status = {
