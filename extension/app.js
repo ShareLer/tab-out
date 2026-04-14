@@ -179,13 +179,19 @@ async function closeTabOutDupes() {
   const newtabUrl = `chrome-extension://${extensionId}/index.html`;
 
   const allTabs = await chrome.tabs.query({});
+  const currentWindow = await chrome.windows.getCurrent();
   const tabOutTabs = allTabs.filter(t =>
     t.url === newtabUrl || t.url === 'chrome://newtab/'
   );
 
   if (tabOutTabs.length <= 1) return;
 
-  const keep = tabOutTabs.find(t => t.active) || tabOutTabs[0];
+  // Keep the active Tab Out tab in the CURRENT window — that's the one the
+  // user is looking at right now. Falls back to any active one, then the first.
+  const keep =
+    tabOutTabs.find(t => t.active && t.windowId === currentWindow.id) ||
+    tabOutTabs.find(t => t.active) ||
+    tabOutTabs[0];
   const toClose = tabOutTabs.filter(t => t.id !== keep.id).map(t => t.id);
   if (toClose.length > 0) await chrome.tabs.remove(toClose);
   await fetchOpenTabs();
@@ -1034,13 +1040,21 @@ async function renderStaticDashboard() {
     { hostname: 'www.linkedin.com',    pathExact: ['/'] },
     { hostname: 'github.com',          pathExact: ['/'] },
     { hostname: 'www.youtube.com',     pathExact: ['/'] },
+    // Merge personal patterns from config.local.js (if it exists)
+    ...(typeof LOCAL_LANDING_PAGE_PATTERNS !== 'undefined' ? LOCAL_LANDING_PAGE_PATTERNS : []),
   ];
 
   function isLandingPage(url) {
     try {
       const parsed = new URL(url);
       return LANDING_PAGE_PATTERNS.some(p => {
-        if (parsed.hostname !== p.hostname) return false;
+        // Support both exact hostname and suffix matching (for wildcard subdomains)
+        const hostnameMatch = p.hostname
+          ? parsed.hostname === p.hostname
+          : p.hostnameEndsWith
+            ? parsed.hostname.endsWith(p.hostnameEndsWith)
+            : false;
+        if (!hostnameMatch) return false;
         if (p.test)       return p.test(parsed.pathname, url);
         if (p.pathPrefix) return parsed.pathname.startsWith(p.pathPrefix);
         if (p.pathExact)  return p.pathExact.includes(parsed.pathname);
@@ -1080,14 +1094,20 @@ async function renderStaticDashboard() {
   }
 
   // Sort: landing pages first, then domains from landing page sites, then by tab count
-  const landingHostnames = new Set(LANDING_PAGE_PATTERNS.map(p => p.hostname));
+  // Collect exact hostnames and suffix patterns for priority sorting
+  const landingHostnames = new Set(LANDING_PAGE_PATTERNS.map(p => p.hostname).filter(Boolean));
+  const landingSuffixes = LANDING_PAGE_PATTERNS.map(p => p.hostnameEndsWith).filter(Boolean);
+  function isLandingDomain(domain) {
+    if (landingHostnames.has(domain)) return true;
+    return landingSuffixes.some(s => domain.endsWith(s));
+  }
   domainGroups = Object.values(groupMap).sort((a, b) => {
     const aIsLanding = a.domain === '__landing-pages__';
     const bIsLanding = b.domain === '__landing-pages__';
     if (aIsLanding !== bIsLanding) return aIsLanding ? -1 : 1;
 
-    const aIsPriority = landingHostnames.has(a.domain);
-    const bIsPriority = landingHostnames.has(b.domain);
+    const aIsPriority = isLandingDomain(a.domain);
+    const bIsPriority = isLandingDomain(b.domain);
     if (aIsPriority !== bIsPriority) return aIsPriority ? -1 : 1;
 
     return b.tabs.length - a.tabs.length;
