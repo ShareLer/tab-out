@@ -81,109 +81,6 @@ header {
   text-transform: uppercase;
 }
 
-/* ---- Tab cleanup banner ---- */
-.tab-cleanup-banner {
-  background: linear-gradient(135deg, rgba(200, 113, 58, 0.04), rgba(200, 113, 58, 0.09));
-  border: 1px solid rgba(200, 113, 58, 0.18);
-  border-radius: 8px;
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.tab-cleanup-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.tab-cleanup-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(200, 113, 58, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.tab-cleanup-icon svg {
-  width: 18px;
-  height: 18px;
-  color: var(--accent-amber);
-}
-
-.tab-cleanup-text {
-  font-size: 13px;
-  color: var(--ink);
-  line-height: 1.5;
-}
-
-.tab-cleanup-text strong {
-  font-weight: 600;
-}
-
-.tab-cleanup-btn {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 8px 20px;
-  border-radius: 6px;
-  border: none;
-  background: var(--accent-amber);
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.tab-cleanup-btn:hover {
-  opacity: 0.85;
-  transform: translateY(-1px);
-}
-
-/* ---- Nudge banner ---- */
-.nudge-banner {
-  background: linear-gradient(135deg, rgba(179, 90, 90, 0.04), rgba(179, 90, 90, 0.08));
-  border: 1px solid rgba(179, 90, 90, 0.15);
-  border-radius: 8px;
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 40px;
-}
-
-.nudge-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(179, 90, 90, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.nudge-icon svg {
-  width: 18px;
-  height: 18px;
-  color: var(--status-abandoned);
-}
-
-.nudge-text {
-  font-size: 13px;
-  color: var(--ink);
-  line-height: 1.5;
-}
-
-.nudge-text strong {
-  font-weight: 600;
-}
-
 /* ---- Section Headers ---- */
 .section-header {
   display: flex;
@@ -291,6 +188,52 @@ header {
   gap: 10px;
   margin-bottom: 6px;
   flex-wrap: wrap;
+}
+
+/* ---- Pin button ---- */
+.pin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0.35;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.pin-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.pin-btn:hover {
+  opacity: 0.7;
+  background: rgba(154, 145, 138, 0.1);
+}
+
+.pin-btn.pinned {
+  opacity: 0.85;
+  color: var(--accent-amber);
+}
+
+.pin-btn.pinned:hover {
+  opacity: 1;
+  background: rgba(200, 113, 58, 0.08);
+}
+
+/* Pinned card indicator */
+.mission-card.is-pinned {
+  box-shadow: 0 2px 12px rgba(200, 113, 58, 0.08);
+}
+
+.mission-card.is-pinned::before {
+  background: var(--accent-amber) !important;
 }
 
 .mission-name {
@@ -1155,4 +1098,422 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   color: var(--muted);
   opacity: 0.6;
   flex-shrink: 0;
+}
+
+
+/* ================================================================
+   QUICK LINKS SECTION
+   ================================================================ */
+
+.quick-links-section {
+  margin-bottom: 32px;
+}
+
+.quick-links-section .section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.quick-links-section .section-header h2 {
+  font-family: 'Newsreader', serif;
+  font-weight: 400;
+  font-size: 18px;
+  font-style: italic;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.quick-links-section .section-header .section-line {
+  flex: 1;
+  height: 1px;
+  background: var(--warm-gray);
+}
+
+.quick-links-section .section-header .section-count {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* ---- Add Link Button (Plus) in section header ---- */
+.quick-links-section .add-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-bg);
+  border: 1px solid var(--warm-gray);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px 8px;
+  transition: all 0.2s;
+  margin-left: 4px;
+}
+
+.quick-links-section .add-link-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.quick-links-section .add-link-btn:hover {
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+  background: rgba(200, 113, 58, 0.04);
+}
+
+.quick-links-container {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ---- Quick links empty state ---- */
+.quick-links-empty {
+  font-size: 13px;
+  color: var(--muted);
+  font-style: italic;
+  padding: 12px 0;
+  text-align: center;
+}
+
+.quick-link-card {
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all 0.2s;
+  position: relative;
+  width: 80px;
+  padding: 8px;
+}
+
+.quick-link-card:hover {
+  transform: translateY(-2px);
+}
+
+.quick-link-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  width: 100%;
+}
+
+.quick-link-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--card-bg);
+  border: 1px solid var(--warm-gray);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.quick-link-card:hover .quick-link-icon {
+  border-color: var(--accent-amber);
+  box-shadow: 0 4px 12px rgba(200, 113, 58, 0.12);
+}
+
+.quick-link-favicon {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+}
+
+.quick-link-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.quick-link-link:hover .quick-link-title {
+  color: var(--accent-amber);
+}
+
+.quick-link-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-bg);
+  border: 1px solid var(--warm-gray);
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s, border-color 0.15s;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.quick-link-remove svg {
+  width: 10px;
+  height: 10px;
+}
+
+.quick-link-card:hover .quick-link-remove {
+  opacity: 1;
+}
+
+.quick-link-remove:hover {
+  color: var(--status-abandoned);
+  background: rgba(179, 90, 90, 0.08);
+  border-color: var(--status-abandoned);
+}
+
+/* ---- Drag and drop styles ---- */
+.quick-link-card {
+  transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              opacity 0.15s ease,
+              box-shadow 0.25s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none; /* Prevent touch scrolling during drag */
+  cursor: grab;
+}
+
+.quick-link-card:active {
+  cursor: grabbing;
+}
+
+.quick-link-card.dragging {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  cursor: grabbing;
+  transform: scale(0.8);
+  transition: opacity 0.1s ease, transform 0.1s ease !important;
+  visibility: hidden; /* Completely hide the original position */
+}
+
+/* Shift distance = card width (80px) + gap (12px) = 92px */
+/* Use faster transition for shift animations during drag */
+.quick-link-card.shift-left {
+  transform: translateX(-92px);
+  transition: transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+}
+
+.quick-link-card.shift-right {
+  transform: translateX(92px);
+  transition: transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+}
+
+/* Link element - allow clicks but don't block pointer events from parent */
+.quick-link-link {
+  pointer-events: none; /* Let pointer events pass through to parent card for drag */
+}
+
+/* Enable pointer events only for specific interactive elements inside the card */
+.quick-link-remove {
+  pointer-events: auto;
+}
+
+/* During drag, disable all interactions */
+.quick-link-card.dragging .quick-link-link,
+.quick-link-card.dragging .quick-link-remove {
+  pointer-events: none !important;
+}
+
+/* ---- Drag ghost element (follows mouse) ---- */
+.quick-link-drag-ghost {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  width: 80px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--card-bg);
+  border: 2px solid var(--accent-amber);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(200, 113, 58, 0.35),
+              0 2px 8px rgba(0, 0, 0, 0.1);
+  opacity: 0.98;
+  transform: scale(1.12);
+  will-change: left, top; /* Optimize for animation */
+}
+
+.quick-link-drag-ghost .quick-link-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--card-bg);
+  border: 2px solid var(--accent-amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quick-link-drag-ghost .quick-link-favicon {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+}
+
+.quick-link-drag-ghost .quick-link-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.quick-link-drag-ghost .quick-link-remove {
+  display: none;
+}
+
+@keyframes ghostPop {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 0.98;
+    transform: scale(1.12);
+  }
+}
+
+
+/* ================================================================
+   MODAL — Add Link Form
+   ================================================================ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 22, 19, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background: var(--card-bg);
+  border: 1px solid var(--warm-gray);
+  border-radius: 12px;
+  width: 360px;
+  max-width: 90vw;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+  animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--warm-gray);
+}
+
+.modal-header h3 {
+  font-family: 'Newsreader', serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.modal-close:hover {
+  color: var(--ink);
+  background: rgba(26, 22, 19, 0.06);
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-field {
+  margin-bottom: 16px;
+}
+
+.modal-field:last-of-type {
+  margin-bottom: 20px;
+}
+
+.modal-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+
+.modal-field input {
+  width: 100%;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--warm-gray);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.modal-field input:focus {
+  border-color: var(--accent-amber);
+}
+
+.modal-field input::placeholder {
+  color: var(--muted);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
 }

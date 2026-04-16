@@ -29,21 +29,23 @@
   </header>
 
   <!-- ================================================================
-       TAB OUT DUPES BANNER — appears when you have extra Tab Out tabs open
-       Hidden by default; app.js shows it when dupeTabOutCount > 1
+       QUICK LINKS SECTION — always visible at the top
+       Plus button moved here for adding new links
        ================================================================ -->
-  <div class="tab-cleanup-banner" id="tabOutDupeBanner" style="display:none">
-    <div class="tab-cleanup-left">
-      <div class="tab-cleanup-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
-        </svg>
-      </div>
-      <div class="tab-cleanup-text">
-        You have <strong id="tabOutDupeCount"></strong> Tab Out tabs open. Keep just this one?
-      </div>
+  <div class="quick-links-section" id="quickLinksSection">
+    <div class="section-header">
+      <h2>Quick links</h2>
+      <div class="section-line"></div>
+      <div class="section-count" id="quickLinksCount"></div>
+      <button class="add-link-btn" data-action="show-add-link-modal" title="Add a quick link">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+      </button>
     </div>
-    <button class="tab-cleanup-btn" data-action="close-tabout-dupes">Close extras</button>
+    <div class="quick-links-container" id="quickLinksContainer"></div>
+    <!-- Empty state message shown when no links -->
+    <div class="quick-links-empty" id="quickLinksEmpty" style="display:none">
+      Click the + button above to add your favorite pages
+    </div>
   </div>
 
   <!-- ================================================================
@@ -114,6 +116,35 @@
 </div><!-- end .container -->
 
 <!-- ================================================================
+     ADD LINK MODAL — popup form for adding quick links
+     Hidden by default, shown when user clicks the plus button
+     ================================================================ -->
+<div class="modal-overlay" id="addLinkModal" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Quick Link</h3>
+      <button class="modal-close" data-action="close-add-link-modal" title="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label for="addLinkUrl">URL</label>
+        <input type="url" id="addLinkUrl" placeholder="https://example.com" required>
+      </div>
+      <div class="modal-field">
+        <label for="addLinkTitle">Title (optional)</label>
+        <input type="text" id="addLinkTitle" placeholder="Example Page">
+      </div>
+      <div class="modal-actions">
+        <button class="action-btn" data-action="close-add-link-modal">Cancel</button>
+        <button class="action-btn primary" data-action="save-quick-link">Add Link</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
      TOAST — floats above everything, used for action confirmations
      Hidden by default via CSS (opacity:0, translateY)
      ================================================================ -->
@@ -127,7 +158,7 @@
 
 <!-- Personal config (gitignored) — defines LOCAL_LANDING_PAGE_PATTERNS etc. -->
 <!-- If the file doesn't exist, that's fine — app.js uses sensible defaults. -->
-<script src="config.local.js" onerror="/* no personal config, that's fine */"></script>
+<script src="config.local.js"></script>
 
 <!-- Main dashboard logic — loads last so the DOM is ready -->
 <script src="app.js"></script>

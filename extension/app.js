@@ -169,34 +169,6 @@ async function closeDuplicateTabs(urls, keepOne = true) {
   await fetchOpenTabs();
 }
 
-/**
- * closeTabOutDupes()
- *
- * Closes all duplicate Tab Out new-tab pages except the current one.
- */
-async function closeTabOutDupes() {
-  const extensionId = chrome.runtime.id;
-  const newtabUrl = `chrome-extension://${extensionId}/index.html`;
-
-  const allTabs = await chrome.tabs.query({});
-  const currentWindow = await chrome.windows.getCurrent();
-  const tabOutTabs = allTabs.filter(t =>
-    t.url === newtabUrl || t.url === 'chrome://newtab/'
-  );
-
-  if (tabOutTabs.length <= 1) return;
-
-  // Keep the active Tab Out tab in the CURRENT window — that's the one the
-  // user is looking at right now. Falls back to any active one, then the first.
-  const keep =
-    tabOutTabs.find(t => t.active && t.windowId === currentWindow.id) ||
-    tabOutTabs.find(t => t.active) ||
-    tabOutTabs[0];
-  const toClose = tabOutTabs.filter(t => t.id !== keep.id).map(t => t.id);
-  if (toClose.length > 0) await chrome.tabs.remove(toClose);
-  await fetchOpenTabs();
-}
-
 
 /* ----------------------------------------------------------------
    SAVED FOR LATER — chrome.storage.local
@@ -252,6 +224,495 @@ async function getSavedTabs() {
     active:   visible.filter(t => !t.completed),
     archived: visible.filter(t => t.completed),
   };
+}
+
+/* ----------------------------------------------------------------
+   PINNED DOMAINS — chrome.storage.local
+
+   Users can pin domain cards to keep them in a fixed position.
+   Pinned domains are stored as an array of domain identifiers.
+
+   Data shape stored under the "pinnedDomains" key:
+   ["github.com", "__landing-pages__", ...]
+   ---------------------------------------------------------------- */
+
+/**
+ * getPinnedDomains()
+ *
+ * Returns the list of pinned domain identifiers from storage.
+ */
+async function getPinnedDomains() {
+  const { pinnedDomains = [] } = await chrome.storage.local.get('pinnedDomains');
+  return pinnedDomains;
+}
+
+/**
+ * savePinnedDomains(domains)
+ *
+ * Saves the list of pinned domains to storage.
+ */
+async function savePinnedDomains(domains) {
+  await chrome.storage.local.set({ pinnedDomains: domains });
+}
+
+/**
+ * pinDomain(domainId)
+ *
+ * Adds a domain to the pinned list.
+ */
+async function pinDomain(domainId) {
+  const pinned = await getPinnedDomains();
+  if (!pinned.includes(domainId)) {
+    pinned.push(domainId);
+    await savePinnedDomains(pinned);
+  }
+}
+
+/**
+ * unpinDomain(domainId)
+ *
+ * Removes a domain from the pinned list.
+ */
+async function unpinDomain(domainId) {
+  const pinned = await getPinnedDomains();
+  const idx = pinned.indexOf(domainId);
+  if (idx !== -1) {
+    pinned.splice(idx, 1);
+    await savePinnedDomains(pinned);
+  }
+}
+
+/**
+ * isDomainPinned(domainId)
+ *
+ * Checks if a domain is pinned.
+ */
+async function isDomainPinned(domainId) {
+  const pinned = await getPinnedDomains();
+  return pinned.includes(domainId);
+}
+
+
+/* ----------------------------------------------------------------
+   QUICK LINKS — chrome.storage.local
+
+   Users can add frequently-used links as "quick links" at the top.
+   Quick links are stored as an array of link objects.
+
+   Data shape stored under the "quickLinks" key:
+   [
+     {
+       id: "1712345678901",          // timestamp-based unique ID
+       url: "https://example.com",
+       title: "Example Page",
+       addedAt: "2026-04-04T10:00:00.000Z"
+     },
+     ...
+   ]
+   ---------------------------------------------------------------- */
+
+/**
+ * getQuickLinks()
+ *
+ * Returns all quick links from storage.
+ */
+async function getQuickLinks() {
+  const { quickLinks = [] } = await chrome.storage.local.get('quickLinks');
+  return quickLinks;
+}
+
+/**
+ * saveQuickLinks(links)
+ *
+ * Saves quick links to storage.
+ */
+async function saveQuickLinks(links) {
+  await chrome.storage.local.set({ quickLinks: links });
+}
+
+/**
+ * addQuickLink(url, title)
+ *
+ * Adds a new quick link to storage.
+ */
+async function addQuickLink(url, title) {
+  const links = await getQuickLinks();
+  links.push({
+    id:      Date.now().toString(),
+    url:     url,
+    title:   title || url,
+    addedAt: new Date().toISOString(),
+  });
+  await saveQuickLinks(links);
+}
+
+/**
+ * removeQuickLink(id)
+ *
+ * Removes a quick link from storage.
+ */
+async function removeQuickLink(id) {
+  const links = await getQuickLinks();
+  const idx = links.findIndex(l => l.id === id);
+  if (idx !== -1) {
+    links.splice(idx, 1);
+    await saveQuickLinks(links);
+  }
+}
+
+
+/* ----------------------------------------------------------------
+   RENDER QUICK LINKS
+   ---------------------------------------------------------------- */
+
+/**
+ * renderQuickLinks()
+ *
+ * Renders the quick links section at the top of the dashboard.
+ * Always shows the section; displays empty state message when no links.
+ */
+async function renderQuickLinks() {
+  const section = document.getElementById('quickLinksSection');
+  const container = document.getElementById('quickLinksContainer');
+  const countEl = document.getElementById('quickLinksCount');
+  const emptyEl = document.getElementById('quickLinksEmpty');
+
+  if (!section || !container) return;
+
+  const links = await getQuickLinks();
+
+  // Section is always visible now
+  section.style.display = 'block';
+
+  if (links.length === 0) {
+    countEl.textContent = '';
+    container.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+
+  // Hide empty state when there are links
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  countEl.textContent = `${links.length} link${links.length !== 1 ? 's' : ''}`;
+
+  container.innerHTML = links.map((link, index) => {
+    let domain = '';
+    try { domain = new URL(link.url).hostname.replace(/^www\./, ''); } catch {}
+    const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : '';
+    const displayTitle = link.title || link.url;
+    const safeUrl = (link.url || '').replace(/"/g, '&quot;');
+    const safeTitle = displayTitle.replace(/"/g, '&quot;');
+
+    return `<div class="quick-link-card" data-quick-link-id="${link.id}" draggable="true" data-index="${index}">
+      <a href="${safeUrl}" target="_blank" rel="noopener" class="quick-link-link" draggable="false" title="${safeTitle}">
+        <div class="quick-link-icon">
+          ${faviconUrl ? `<img class="quick-link-favicon" src="${faviconUrl}" alt="" data-fallback="true">` : ''}
+        </div>
+        <span class="quick-link-title">${displayTitle}</span>
+      </a>
+      <button class="quick-link-remove" data-action="remove-quick-link" data-quick-link-id="${link.id}" title="Remove this link">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+      </button>
+    </div>`;
+  }).join('');
+
+  // Handle favicon load errors (CSP-safe)
+  container.querySelectorAll('.quick-link-favicon[data-fallback]').forEach(img => {
+    img.addEventListener('error', function() {
+      this.style.display = 'none';
+    });
+  });
+
+  // Setup drag handlers for quick links
+  setupQuickLinksDragHandlers(container);
+
+  // Setup favicon error handlers
+  setupFaviconErrorHandlers();
+}
+
+
+/* ----------------------------------------------------------------
+   DRAG & DROP FOR QUICK LINKS
+
+   Uses pure pointer events (pointerdown/pointermove/pointerup)
+   instead of HTML5 drag API for more reliable control,
+   especially when dealing with <a> child elements.
+   ---------------------------------------------------------------- */
+
+let draggedQuickLink = null;
+let draggedIndex = -1;
+let dragGhostElement = null;
+let dragStartX = 0;
+let dragStartY = 0;
+let hasStartedDrag = false;
+let lastTargetSlot = -1; // Track last target slot to avoid unnecessary updates
+const DRAG_THRESHOLD = 8; // Minimum distance (pixels) to consider as drag vs click
+
+/**
+ * setupQuickLinksDragHandlers(container)
+ *
+ * Sets up pointer event handlers for quick link cards.
+ */
+function setupQuickLinksDragHandlers(container) {
+  const cards = container.querySelectorAll('.quick-link-card');
+
+  cards.forEach(card => {
+    card.addEventListener('pointerdown', handlePointerDown, { passive: false });
+  });
+
+  // Global events for drag continuation and end
+  document.addEventListener('pointermove', handlePointerMove, { passive: false });
+  document.addEventListener('pointerup', handlePointerUp);
+  document.addEventListener('pointercancel', handlePointerUp);
+}
+
+function handlePointerDown(e) {
+  // Don't start drag from remove button or modal
+  if (e.target.closest('.quick-link-remove') || e.target.closest('.modal-overlay')) {
+    return;
+  }
+
+  const card = e.currentTarget;
+
+  // Prevent default behavior (including link clicks) immediately
+  // We'll handle the click ourselves if it's not a drag
+  e.preventDefault();
+
+  // Record starting position
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  hasStartedDrag = false;
+  lastTargetSlot = -1;
+
+  // Mark this card as potential drag target
+  draggedQuickLink = card;
+  draggedIndex = parseInt(card.dataset.index);
+
+  // Capture pointer for reliable tracking
+  card.setPointerCapture(e.pointerId);
+}
+
+function handlePointerMove(e) {
+  if (!draggedQuickLink) return;
+
+  const deltaX = e.clientX - dragStartX;
+  const deltaY = e.clientY - dragStartY;
+  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+  // Check if we've crossed the drag threshold
+  if (!hasStartedDrag && distance > DRAG_THRESHOLD) {
+    hasStartedDrag = true;
+
+    // Prevent link click and other default behaviors
+    e.preventDefault();
+
+    // Create ghost element
+    createDragGhost(draggedQuickLink, e.clientX, e.clientY);
+
+    // Mark original card as dragging (completely hidden)
+    draggedQuickLink.classList.add('dragging');
+    draggedQuickLink.style.opacity = '0';
+  }
+
+  // If dragging, update ghost position and check for drop targets
+  if (hasStartedDrag && dragGhostElement) {
+    e.preventDefault();
+
+    // Update ghost position
+    dragGhostElement.style.left = e.clientX - 40 + 'px';
+    dragGhostElement.style.top = e.clientY - 40 + 'px';
+
+    // Find potential drop target (only update when target actually changes)
+    updateDropTarget(e.clientX, e.clientY);
+  }
+}
+
+function handlePointerUp(e) {
+  if (!draggedQuickLink) return;
+
+  // If we actually dragged, perform the reorder
+  if (hasStartedDrag) {
+    e.preventDefault();
+
+    // Use the last calculated target slot
+    const targetIndex = lastTargetSlot >= 0 ? lastTargetSlot : draggedIndex;
+
+    // Reorder if target is different from source
+    if (targetIndex !== draggedIndex) {
+      performReorder(draggedIndex, targetIndex);
+    } else {
+      cleanupDrag();
+    }
+  } else {
+    // This was a click, not a drag - open the link
+    const link = draggedQuickLink.querySelector('.quick-link-link');
+    if (link) {
+      const href = link.getAttribute('href');
+      if (href) {
+        window.open(href, '_blank', 'noopener');
+      }
+    }
+    cleanupDrag();
+  }
+}
+
+function createDragGhost(card, x, y) {
+  // Remove existing ghost if any
+  if (dragGhostElement) {
+    dragGhostElement.remove();
+  }
+
+  dragGhostElement = document.createElement('div');
+  dragGhostElement.className = 'quick-link-drag-ghost';
+
+  // Clone the card's visual content
+  const icon = card.querySelector('.quick-link-icon');
+  const title = card.querySelector('.quick-link-title');
+
+  dragGhostElement.innerHTML = `
+    <div class="quick-link-icon" style="width:48px;height:48px;border-radius:50%;background:var(--card-bg);border:2px solid var(--accent-amber);display:flex;align-items:center;justify-content:center;">
+      ${icon ? icon.innerHTML : ''}
+    </div>
+    <span class="quick-link-title" style="font-size:12px;font-weight:500;color:var(--ink);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:72px;">
+      ${title ? title.textContent : ''}
+    </span>
+  `;
+
+  dragGhostElement.style.left = x - 40 + 'px';
+  dragGhostElement.style.top = y - 40 + 'px';
+  document.body.appendChild(dragGhostElement);
+}
+
+function updateDropTarget(x, y) {
+  const container = document.getElementById('quickLinksContainer');
+  if (!container) return;
+
+  const cards = Array.from(container.querySelectorAll('.quick-link-card'));
+  if (cards.length === 0) return;
+
+  // Find the nearest card (excluding the dragging one) to determine drop position
+  let nearestCard = null;
+  let nearestDistance = Infinity;
+  let ghostIsBefore = false;
+
+  for (const card of cards) {
+    if (card.classList.contains('dragging')) continue;
+
+    const rect = card.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const distance = Math.abs(x - centerX);
+
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearestCard = card;
+      ghostIsBefore = x < centerX;
+    }
+  }
+
+  // If no nearest card found (only dragging card exists), target is dragged index
+  if (!nearestCard) {
+    lastTargetSlot = draggedIndex;
+    return;
+  }
+
+  const nearestIndex = parseInt(nearestCard.dataset.index);
+
+  // Calculate target slot based on ghost position relative to nearest card
+  // We need to account for where the dragged card came from
+  let targetSlot;
+
+  if (ghostIsBefore) {
+    // Ghost is before the nearest card
+    if (nearestIndex < draggedIndex) {
+      // Nearest card is before original position, so ghost should be at nearest position
+      targetSlot = nearestIndex;
+    } else {
+      // Nearest card is after original position, ghost takes the slot before nearest
+      targetSlot = nearestIndex - 1;
+    }
+  } else {
+    // Ghost is after the nearest card
+    if (nearestIndex < draggedIndex) {
+      // Nearest card is before original position, ghost is after nearest
+      targetSlot = nearestIndex + 1;
+    } else {
+      // Nearest card is after original position, ghost fills in at nearest position
+      targetSlot = nearestIndex;
+    }
+  }
+
+  // Clamp to valid range
+  targetSlot = Math.max(0, Math.min(targetSlot, cards.length - 1));
+
+  // Only update shift animations if target slot actually changed
+  if (targetSlot !== lastTargetSlot) {
+    lastTargetSlot = targetSlot;
+
+    // Clear previous shift states without animation
+    cards.forEach(card => {
+      card.classList.remove('shift-left', 'shift-right');
+    });
+
+    // Apply shift animations based on new target
+    if (targetSlot !== draggedIndex) {
+      cards.forEach(card => {
+        if (card.classList.contains('dragging')) return;
+
+        const cardIndex = parseInt(card.dataset.index);
+
+        if (draggedIndex < targetSlot) {
+          // Dragged card moving right: cards in between shift left to fill gap
+          if (cardIndex > draggedIndex && cardIndex <= targetSlot) {
+            card.classList.add('shift-left');
+          }
+        } else if (draggedIndex > targetSlot) {
+          // Dragged card moving left: cards in between shift right to make room
+          if (cardIndex >= targetSlot && cardIndex < draggedIndex) {
+            card.classList.add('shift-right');
+          }
+        }
+      });
+    }
+  }
+}
+
+async function performReorder(fromIndex, toIndex) {
+  const links = await getQuickLinks();
+  if (fromIndex < 0 || fromIndex >= links.length || toIndex < 0 || toIndex >= links.length) {
+    cleanupDrag();
+    return;
+  }
+
+  const [movedLink] = links.splice(fromIndex, 1);
+  links.splice(toIndex, 0, movedLink);
+  await saveQuickLinks(links);
+
+  // Cleanup drag state first
+  cleanupDrag();
+
+  // Re-render
+  await renderQuickLinks();
+}
+
+function cleanupDrag() {
+  // Remove ghost
+  if (dragGhostElement) {
+    dragGhostElement.remove();
+    dragGhostElement = null;
+  }
+
+  // Reset all cards
+  document.querySelectorAll('.quick-link-card').forEach(card => {
+    card.classList.remove('dragging', 'shift-left', 'shift-right');
+    card.style.opacity = '';
+  });
+
+  // Reset state
+  draggedQuickLink = null;
+  draggedIndex = -1;
+  hasStartedDrag = false;
+  lastTargetSlot = -1;
 }
 
 /**
@@ -489,6 +950,23 @@ function timeAgo(dateStr) {
   if (diffHours < 24) return diffHours + ' hr' + (diffHours !== 1 ? 's' : '') + ' ago';
   if (diffDays === 1) return 'yesterday';
   return diffDays + ' days ago';
+}
+
+/**
+ * setupFaviconErrorHandlers()
+ *
+ * Sets up error handlers for all favicon images to hide them on load failure.
+ * This is CSP-safe because it uses event listeners instead of inline handlers.
+ */
+function setupFaviconErrorHandlers() {
+  document.querySelectorAll('.chip-favicon, .quick-link-favicon').forEach(img => {
+    if (!img.dataset.errorHandler) {
+      img.dataset.errorHandler = 'true';
+      img.addEventListener('error', function() {
+        this.style.display = 'none';
+      });
+    }
+  });
 }
 
 /**
@@ -732,26 +1210,6 @@ function getRealTabs() {
   });
 }
 
-/**
- * checkTabOutDupes()
- *
- * Counts how many Tab Out pages are open. If more than 1,
- * shows a banner offering to close the extras.
- */
-function checkTabOutDupes() {
-  const tabOutTabs = openTabs.filter(t => t.isTabOut);
-  const banner  = document.getElementById('tabOutDupeBanner');
-  const countEl = document.getElementById('tabOutDupeCount');
-  if (!banner) return;
-
-  if (tabOutTabs.length > 1) {
-    if (countEl) countEl.textContent = tabOutTabs.length;
-    banner.style.display = 'flex';
-  } else {
-    banner.style.display = 'none';
-  }
-}
-
 
 /* ----------------------------------------------------------------
    OVERFLOW CHIPS ("+N more" expand button in domain cards)
@@ -769,7 +1227,7 @@ function buildOverflowChips(hiddenTabs, urlCounts = {}) {
     try { domain = new URL(tab.url).hostname; } catch {}
     const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=16` : '';
     return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" title="${safeTitle}">
-      ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="" onerror="this.style.display='none'">` : ''}
+      ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="">` : ''}
       <span class="chip-text">${label}</span>${dupeTag}
       <div class="chip-actions">
         <button class="chip-action chip-save" data-action="defer-single-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" title="Save for later">
@@ -795,12 +1253,13 @@ function buildOverflowChips(hiddenTabs, urlCounts = {}) {
    ---------------------------------------------------------------- */
 
 /**
- * renderDomainCard(group, groupIndex)
+ * renderDomainCard(group, isPinned)
  *
  * Builds the HTML for one domain group card.
  * group = { domain: string, tabs: [{ url, title, id, windowId, active }] }
+ * isPinned = boolean, whether this domain is pinned
  */
-function renderDomainCard(group) {
+function renderDomainCard(group, isPinned = false) {
   const tabs      = group.tabs || [];
   const tabCount  = tabs.length;
   const isLanding = group.domain === '__landing-pages__';
@@ -812,6 +1271,14 @@ function renderDomainCard(group) {
   const dupeUrls   = Object.entries(urlCounts).filter(([, c]) => c > 1);
   const hasDupes   = dupeUrls.length > 0;
   const totalExtras = dupeUrls.reduce((s, [, c]) => s + c - 1, 0);
+
+  // Pin icon button (pushpin/thumbtack style)
+  // Filled when pinned, outlined when not pinned
+  const pinIcon = isPinned
+    ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="pin-svg"><path d="M16 12V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v8c0 1.1.9 2 2 2h2v6l2 2 2-2v-6h2c1.1 0 2-.9 2-2z"/></svg>`
+    : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke="currentColor" class="pin-svg"><path stroke-linecap="round" stroke-linejoin="round" d="M16 12V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v8c0 1.1.9 2 2 2h2v6l2 2 2-2v-6h2c1.1 0 2-.9 2-2z"/></svg>`;
+
+  const pinBtn = `<button class="pin-btn ${isPinned ? 'pinned' : ''}" data-action="toggle-pin" data-domain-id="${stableId}" title="${isPinned ? 'Unpin this card' : 'Pin this card to keep it in place'}">${pinIcon}</button>`;
 
   const tabBadge = `<span class="open-tabs-badge">
     ${ICONS.tabs}
@@ -850,7 +1317,7 @@ function renderDomainCard(group) {
     try { domain = new URL(tab.url).hostname; } catch {}
     const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=16` : '';
     return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" title="${safeTitle}">
-      ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="" onerror="this.style.display='none'">` : ''}
+      ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="">` : ''}
       <span class="chip-text">${label}</span>${dupeTag}
       <div class="chip-actions">
         <button class="chip-action chip-save" data-action="defer-single-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" title="Save for later">
@@ -878,10 +1345,11 @@ function renderDomainCard(group) {
   }
 
   return `
-    <div class="mission-card domain-card ${hasDupes ? 'has-amber-bar' : 'has-neutral-bar'}" data-domain-id="${stableId}">
+    <div class="mission-card domain-card ${hasDupes ? 'has-amber-bar' : 'has-neutral-bar'} ${isPinned ? 'is-pinned' : ''}" data-domain-id="${stableId}">
       <div class="status-bar"></div>
       <div class="mission-content">
         <div class="mission-top">
+          ${pinBtn}
           <span class="mission-name">${isLanding ? 'Homepages' : (group.label || friendlyDomain(group.domain))}</span>
           ${tabBadge}
           ${dupeBadge}
@@ -974,7 +1442,7 @@ function renderDeferredItem(item) {
       <input type="checkbox" class="deferred-checkbox" data-action="check-deferred" data-deferred-id="${item.id}">
       <div class="deferred-info">
         <a href="${item.url}" target="_blank" rel="noopener" class="deferred-title" title="${(item.title || '').replace(/"/g, '&quot;')}">
-          <img src="${faviconUrl}" alt="" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px" onerror="this.style.display='none'">${item.title || item.url}
+          <img src="${faviconUrl}" alt="" class="deferred-favicon" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">${item.title || item.url}
         </a>
         <div class="deferred-meta">
           <span>${domain}</span>
@@ -1123,6 +1591,7 @@ async function renderStaticDashboard() {
   }
 
   // Sort: landing pages first, then domains from landing page sites, then by tab count
+  // Pinned domains keep their pinned position
   // Collect exact hostnames and suffix patterns for priority sorting
   const landingHostnames = new Set(LANDING_PAGE_PATTERNS.map(p => p.hostname).filter(Boolean));
   const landingSuffixes = LANDING_PAGE_PATTERNS.map(p => p.hostnameEndsWith).filter(Boolean);
@@ -1130,7 +1599,32 @@ async function renderStaticDashboard() {
     if (landingHostnames.has(domain)) return true;
     return landingSuffixes.some(s => domain.endsWith(s));
   }
+
+  // Get pinned domains for sorting
+  const pinnedDomains = await getPinnedDomains();
+
+  // Helper to convert domain to stableId
+  function domainToId(domain) {
+    return 'domain-' + domain.replace(/[^a-z0-9]/g, '-');
+  }
+
+  // Sort groups: pinned domains stay in their pinned order, others sort normally
   domainGroups = Object.values(groupMap).sort((a, b) => {
+    const aId = domainToId(a.domain);
+    const bId = domainToId(b.domain);
+    const aPinIdx = pinnedDomains.indexOf(aId);
+    const bPinIdx = pinnedDomains.indexOf(bId);
+
+    // Both pinned: maintain pinned order
+    if (aPinIdx !== -1 && bPinIdx !== -1) return aPinIdx - bPinIdx;
+
+    // Only a pinned: a comes first (after already-placed pinned items)
+    if (aPinIdx !== -1) return -1;
+
+    // Only b pinned: b comes first
+    if (bPinIdx !== -1) return 1;
+
+    // Neither pinned: use original sorting logic
     const aIsLanding = a.domain === '__landing-pages__';
     const bIsLanding = b.domain === '__landing-pages__';
     if (aIsLanding !== bIsLanding) return aIsLanding ? -1 : 1;
@@ -1151,7 +1645,11 @@ async function renderStaticDashboard() {
   if (domainGroups.length > 0 && openTabsSection) {
     if (openTabsSectionTitle) openTabsSectionTitle.textContent = 'Open tabs';
     openTabsSectionCount.innerHTML = `${domainGroups.length} domain${domainGroups.length !== 1 ? 's' : ''} &nbsp;&middot;&nbsp; <button class="action-btn close-tabs" data-action="close-all-open-tabs" style="font-size:11px;padding:3px 10px;">${ICONS.close} Close all ${realTabs.length} tabs</button>`;
-    openTabsMissionsEl.innerHTML = domainGroups.map(g => renderDomainCard(g)).join('');
+    openTabsMissionsEl.innerHTML = domainGroups.map(g => {
+      const stableId = domainToId(g.domain);
+      const isPinned = pinnedDomains.includes(stableId);
+      return renderDomainCard(g, isPinned);
+    }).join('');
     openTabsSection.style.display = 'block';
   } else if (openTabsSection) {
     openTabsSection.style.display = 'none';
@@ -1161,11 +1659,14 @@ async function renderStaticDashboard() {
   const statTabs = document.getElementById('statTabs');
   if (statTabs) statTabs.textContent = openTabs.length;
 
-  // --- Check for duplicate Tab Out tabs ---
-  checkTabOutDupes();
+  // --- Render Quick Links ---
+  await renderQuickLinks();
 
   // --- Render "Saved for Later" column ---
   await renderDeferredColumn();
+
+  // --- Setup favicon error handlers (CSP-safe) ---
+  setupFaviconErrorHandlers();
 }
 
 async function renderDashboard() {
@@ -1188,17 +1689,121 @@ document.addEventListener('click', async (e) => {
 
   const action = actionEl.dataset.action;
 
-  // ---- Close duplicate Tab Out tabs ----
-  if (action === 'close-tabout-dupes') {
-    await closeTabOutDupes();
-    playCloseSound();
-    const banner = document.getElementById('tabOutDupeBanner');
-    if (banner) {
-      banner.style.transition = 'opacity 0.4s';
-      banner.style.opacity = '0';
-      setTimeout(() => { banner.style.display = 'none'; banner.style.opacity = '1'; }, 400);
+  // ---- Toggle pin on a domain card ----
+  if (action === 'toggle-pin') {
+    e.stopPropagation(); // don't trigger parent card's click
+    const domainId = actionEl.dataset.domainId;
+    if (!domainId) return;
+
+    const pinned = await getPinnedDomains();
+    const isCurrentlyPinned = pinned.includes(domainId);
+
+    if (isCurrentlyPinned) {
+      await unpinDomain(domainId);
+      showToast('Card unpinned');
+    } else {
+      // When pinning, add it to the end of pinned list
+      // (or maintain current position if we want "pin in place")
+      await pinDomain(domainId);
+      showToast('Card pinned');
     }
-    showToast('Closed extra Tab Out tabs');
+
+    // Re-render to update order and visual state
+    await renderStaticDashboard();
+    return;
+  }
+
+  // ---- Show add link modal ----
+  if (action === 'show-add-link-modal') {
+    const modal = document.getElementById('addLinkModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      // Focus the URL input
+      setTimeout(() => {
+        const urlInput = document.getElementById('addLinkUrl');
+        if (urlInput) urlInput.focus();
+      }, 100);
+    }
+    return;
+  }
+
+  // ---- Close add link modal ----
+  if (action === 'close-add-link-modal') {
+    const modal = document.getElementById('addLinkModal');
+    if (modal) {
+      modal.style.display = 'none';
+      // Clear the inputs
+      const urlInput = document.getElementById('addLinkUrl');
+      const titleInput = document.getElementById('addLinkTitle');
+      if (urlInput) urlInput.value = '';
+      if (titleInput) titleInput.value = '';
+    }
+    return;
+  }
+
+  // ---- Save quick link ----
+  if (action === 'save-quick-link') {
+    const urlInput = document.getElementById('addLinkUrl');
+    const titleInput = document.getElementById('addLinkTitle');
+    const url = urlInput ? urlInput.value.trim() : '';
+    const title = titleInput ? titleInput.value.trim() : '';
+
+    if (!url) {
+      showToast('Please enter a URL');
+      return;
+    }
+
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch {
+      showToast('Please enter a valid URL');
+      return;
+    }
+
+    // Add to storage
+    await addQuickLink(url, title);
+
+    // Close modal and clear inputs
+    const modal = document.getElementById('addLinkModal');
+    if (modal) modal.style.display = 'none';
+    if (urlInput) urlInput.value = '';
+    if (titleInput) titleInput.value = '';
+
+    showToast('Quick link added');
+    await renderQuickLinks();
+    return;
+  }
+
+  // ---- Remove quick link ----
+  if (action === 'remove-quick-link') {
+    e.stopPropagation();
+    const linkId = actionEl.dataset.quickLinkId;
+    if (!linkId) return;
+
+    await removeQuickLink(linkId);
+
+    // Animate the card out
+    const linkCard = actionEl.closest('.quick-link-card');
+    if (linkCard) {
+      playCloseSound();
+      linkCard.style.transition = 'opacity 0.2s, transform 0.2s';
+      linkCard.style.opacity = '0';
+      linkCard.style.transform = 'scale(0.8)';
+      setTimeout(() => {
+        linkCard.remove();
+        // Check if should show empty state
+        const container = document.getElementById('quickLinksContainer');
+        const emptyEl = document.getElementById('quickLinksEmpty');
+        const countEl = document.getElementById('quickLinksCount');
+        if (container && container.children.length === 0) {
+          if (emptyEl) emptyEl.style.display = 'block';
+          if (countEl) countEl.textContent = '';
+        }
+      }, 200);
+    }
+
+    showToast('Quick link removed');
     return;
   }
 
@@ -1430,6 +2035,35 @@ document.addEventListener('click', async (e) => {
 
     showToast('All tabs closed. Fresh start.');
     return;
+  }
+});
+
+// ---- Modal overlay click to close ----
+document.addEventListener('click', (e) => {
+  const modal = document.getElementById('addLinkModal');
+  if (!modal) return;
+
+  // Only close if clicking directly on the overlay (not the modal content)
+  if (e.target === modal && modal.style.display !== 'none') {
+    modal.style.display = 'none';
+    const urlInput = document.getElementById('addLinkUrl');
+    const titleInput = document.getElementById('addLinkTitle');
+    if (urlInput) urlInput.value = '';
+    if (titleInput) titleInput.value = '';
+  }
+});
+
+// ---- Escape key to close modal ----
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('addLinkModal');
+    if (modal && modal.style.display !== 'none') {
+      modal.style.display = 'none';
+      const urlInput = document.getElementById('addLinkUrl');
+      const titleInput = document.getElementById('addLinkTitle');
+      if (urlInput) urlInput.value = '';
+      if (titleInput) titleInput.value = '';
+    }
   }
 });
 
