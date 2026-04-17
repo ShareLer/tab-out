@@ -2217,6 +2217,40 @@ function setupTabChangeListener() {
   let refreshTimer = null;
   const REFRESH_DELAY = 300; // Wait 300ms before refreshing
 
+  // Cache of tabs' URL without query string to detect non-query URL changes
+  const tabsUrlCache = new Map();
+
+  /**
+   * getUrlWithoutQuery(url)
+   * Returns URL without query string (the part after ?).
+   * Used to compare if only query params changed.
+   */
+  function getUrlWithoutQuery(url) {
+    if (!url) return '';
+    // Split at '?' and take the first part
+    const queryIndex = url.indexOf('?');
+    if (queryIndex !== -1) {
+      return url.substring(0, queryIndex);
+    }
+    return url;
+  }
+
+  /**
+   * needsRefreshForUrlChange(tabId, newUrl)
+   * Determines if URL change requires dashboard refresh.
+   * Returns false only when query string changed (but base URL same).
+   */
+  function needsRefreshForUrlChange(tabId, newUrl) {
+    const newBaseUrl = getUrlWithoutQuery(newUrl);
+    const oldBaseUrl = tabsUrlCache.get(tabId) || '';
+
+    // Update cache
+    tabsUrlCache.set(tabId, newBaseUrl);
+
+    // Refresh if base URL (without query) changed
+    return newBaseUrl !== oldBaseUrl;
+  }
+
   function scheduleRefresh() {
     // Skip refresh if paused (e.g., during card animation)
     if (isRefreshPaused) return;
@@ -2230,21 +2264,36 @@ function setupTabChangeListener() {
     }, REFRESH_DELAY);
   }
 
-  // Listen for new tabs
-  chrome.tabs.onCreated.addListener(() => {
+  // Initialize cache with current tabs
+  chrome.tabs.query({}).then(tabs => {
+    tabs.forEach(tab => {
+      if (tab.id && tab.url) {
+        tabsUrlCache.set(tab.id, getUrlWithoutQuery(tab.url));
+      }
+    });
+  });
+
+  // Listen for new tabs - always refresh
+  chrome.tabs.onCreated.addListener((tab) => {
+    if (tab.id && tab.url) {
+      tabsUrlCache.set(tab.id, getUrlWithoutQuery(tab.url));
+    }
     scheduleRefresh();
   });
 
-  // Listen for closed tabs
-  chrome.tabs.onRemoved.addListener(() => {
+  // Listen for closed tabs - always refresh
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    tabsUrlCache.delete(tabId);
     scheduleRefresh();
   });
 
-  // Listen for tab URL changes (navigation)
-  chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
-    // Only refresh when URL actually changes (not just status/title)
+  // Listen for tab URL changes - refresh unless only query changed
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    // Only check when URL actually changes
     if (changeInfo.url) {
-      scheduleRefresh();
+      if (needsRefreshForUrlChange(tabId, changeInfo.url)) {
+        scheduleRefresh();
+      }
     }
   });
 }
