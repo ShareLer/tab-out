@@ -1698,21 +1698,31 @@ document.addEventListener('click', async (e) => {
     const domainId = actionEl.dataset.domainId;
     if (!domainId) return;
 
+    const card = actionEl.closest('.mission-card');
+    if (!card) return;
+
     const pinned = await getPinnedDomains();
     const isCurrentlyPinned = pinned.includes(domainId);
 
     if (isCurrentlyPinned) {
       await unpinDomain(domainId);
+      card.classList.remove('is-pinned');
+      actionEl.classList.remove('pinned');
       showToast('Card unpinned');
     } else {
-      // When pinning, add it to the end of pinned list
-      // (or maintain current position if we want "pin in place")
       await pinDomain(domainId);
+      card.classList.add('is-pinned');
+      actionEl.classList.add('pinned');
       showToast('Card pinned');
     }
 
-    // Re-render to update order and visual state
-    await renderStaticDashboard();
+    // Update pin icon SVG
+    const newIcon = isCurrentlyPinned
+      ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke="currentColor" class="pin-svg"><path stroke-linecap="round" stroke-linejoin="round" d="M16 12V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v8c0 1.1.9 2 2 2h2v6l2 2 2-2v-6h2c1.1 0 2-.9 2-2z"/></svg>`
+      : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="pin-svg"><path d="M16 12V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v8c0 1.1.9 2 2 2h2v6l2 2 2-2v-6h2c1.1 0 2-.9 2-2z"/></svg>`;
+    actionEl.innerHTML = newIcon;
+
+    // No need to re-render entire dashboard
     return;
   }
 
@@ -1835,6 +1845,9 @@ document.addEventListener('click', async (e) => {
     const tabUrl = actionEl.dataset.tabUrl;
     if (!tabUrl) return;
 
+    // Pause auto-refresh to avoid re-render during animation
+    pauseRefresh();
+
     // Close the tab in Chrome directly
     const allTabs = await chrome.tabs.query({});
     const match   = allTabs.find(t => t.url === tabUrl);
@@ -1861,7 +1874,11 @@ document.addEventListener('click', async (e) => {
             animateCardOut(c);
           }
         });
+        // Resume refresh after animations complete
+        setTimeout(() => resumeRefresh(), 100);
       }, 200);
+    } else {
+      resumeRefresh();
     }
 
     // Update footer
@@ -1956,6 +1973,9 @@ document.addEventListener('click', async (e) => {
     });
     if (!group) return;
 
+    // Pause auto-refresh to avoid card disappearing then reappearing
+    pauseRefresh();
+
     const urls      = group.tabs.map(t => t.url);
     // Landing pages and custom groups (whose domain key isn't a real hostname)
     // must use exact URL matching to avoid closing unrelated tabs
@@ -1970,6 +1990,10 @@ document.addEventListener('click', async (e) => {
     if (card) {
       playCloseSound();
       animateCardOut(card);
+      // Resume refresh after animation completes (300ms)
+      setTimeout(() => resumeRefresh(), 350);
+    } else {
+      resumeRefresh();
     }
 
     // Remove from in-memory groups
@@ -1989,6 +2013,9 @@ document.addEventListener('click', async (e) => {
     const urlsEncoded = actionEl.dataset.dupeUrls || '';
     const urls = urlsEncoded.split(',').map(u => decodeURIComponent(u)).filter(Boolean);
     if (urls.length === 0) return;
+
+    // Pause auto-refresh to avoid re-render during animation
+    pauseRefresh();
 
     await closeDuplicateTabs(urls, true);
     playCloseSound();
@@ -2016,12 +2043,18 @@ document.addEventListener('click', async (e) => {
       card.classList.add('has-neutral-bar');
     }
 
+    // Resume refresh after animations complete
+    setTimeout(() => resumeRefresh(), 250);
+
     showToast('Closed duplicates, kept one copy each');
     return;
   }
 
   // ---- Close ALL open tabs ----
   if (action === 'close-all-open-tabs') {
+    // Pause auto-refresh to avoid re-render during animation
+    pauseRefresh();
+
     const allUrls = openTabs
       .filter(t => t.url && !t.url.startsWith('chrome') && !t.url.startsWith('about:'))
       .map(t => t.url);
@@ -2035,6 +2068,9 @@ document.addEventListener('click', async (e) => {
       );
       animateCardOut(c);
     });
+
+    // Resume refresh after animations complete
+    setTimeout(() => resumeRefresh(), 400);
 
     showToast('All tabs closed. Fresh start.');
     return;
@@ -2200,7 +2236,19 @@ setupTabChangeListener();
    - A new tab is opened
    - A tab is closed
    - A tab's URL changes (navigation)
+
+   Can be paused temporarily to avoid re-render during user-initiated actions.
    ---------------------------------------------------------------- */
+
+let isRefreshPaused = false;
+
+function pauseRefresh() {
+  isRefreshPaused = true;
+}
+
+function resumeRefresh() {
+  isRefreshPaused = false;
+}
 
 function setupTabChangeListener() {
   // Debounce timer to avoid rapid re-renders
@@ -2208,9 +2256,14 @@ function setupTabChangeListener() {
   const REFRESH_DELAY = 300; // Wait 300ms before refreshing
 
   function scheduleRefresh() {
+    // Skip refresh if paused (e.g., during card animation)
+    if (isRefreshPaused) return;
+
     if (refreshTimer) clearTimeout(refreshTimer);
     refreshTimer = setTimeout(() => {
-      renderDashboard();
+      if (!isRefreshPaused) {
+        renderDashboard();
+      }
       refreshTimer = null;
     }, REFRESH_DELAY);
   }
