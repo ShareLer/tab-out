@@ -204,6 +204,11 @@ header {
   white-space: nowrap;
 }
 
+/* Clear all button in section header */
+.clear-all-btn {
+  margin-left: 4px;
+}
+
 /* ---- Mission Cards ---- */
 .missions {
   columns: 280px;

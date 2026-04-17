@@ -1390,10 +1390,11 @@ function renderDomainCard(group, isPinned = false) {
  * the right-side column. Always visible, shows empty state when no items.
  */
 async function renderRecentlyClosedColumn() {
-  const column  = document.getElementById('deferredColumn');
-  const list    = document.getElementById('deferredList');
-  const empty   = document.getElementById('deferredEmpty');
-  const countEl = document.getElementById('deferredCount');
+  const column    = document.getElementById('deferredColumn');
+  const list      = document.getElementById('deferredList');
+  const empty     = document.getElementById('deferredEmpty');
+  const countEl   = document.getElementById('deferredCount');
+  const clearBtn  = document.querySelector('[data-action="clear-all-recent"]');
 
   if (!column) return;
 
@@ -1408,12 +1409,14 @@ async function renderRecentlyClosedColumn() {
       list.style.display = 'none';
       empty.style.display = 'block';
       countEl.textContent = '';
+      if (clearBtn) clearBtn.style.display = 'none';
     } else {
       // Render items
       countEl.textContent = `${items.length}`;
       list.innerHTML = items.map(item => renderRecentlyClosedItem(item)).join('');
       list.style.display = 'block';
       empty.style.display = 'none';
+      if (clearBtn) clearBtn.style.display = 'inline-flex';
     }
 
   } catch (err) {
@@ -1423,6 +1426,7 @@ async function renderRecentlyClosedColumn() {
     list.style.display = 'none';
     empty.style.display = 'block';
     countEl.textContent = '';
+    if (clearBtn) clearBtn.style.display = 'none';
   }
 }
 
@@ -1467,19 +1471,22 @@ function updateRecentlyClosedCount() {
   const countEl = document.getElementById('deferredCount');
   const list    = document.getElementById('deferredList');
   const empty   = document.getElementById('deferredEmpty');
+  const clearBtn = document.querySelector('[data-action="clear-all-recent"]');
 
   if (!countEl || !list || !empty) return;
 
   const itemCount = list.querySelectorAll('.deferred-item').length;
   countEl.textContent = itemCount > 0 ? `${itemCount}` : '';
 
-  // Show/hide empty state
+  // Show/hide empty state and clear button
   if (itemCount === 0) {
     list.style.display = 'none';
     empty.style.display = 'block';
+    if (clearBtn) clearBtn.style.display = 'none';
   } else {
     list.style.display = 'block';
     empty.style.display = 'none';
+    if (clearBtn) clearBtn.style.display = 'inline-flex';
   }
 }
 
@@ -1940,6 +1947,25 @@ document.addEventListener('click', async (e) => {
         updateRecentlyClosedCount();
       }, 300);
     }
+    return;
+  }
+
+  // ---- Clear all recently closed entries ----
+  if (action === 'clear-all-recent') {
+    await clearAllRecentlyClosed();
+    showToast('Cleared all');
+
+    // Fade out all items then clear
+    const items = document.querySelectorAll('.deferred-item');
+    items.forEach(item => {
+      item.classList.add('removing');
+    });
+
+    setTimeout(() => {
+      const list = document.getElementById('deferredList');
+      if (list) list.innerHTML = '';
+      updateRecentlyClosedCount();
+    }, 300);
     return;
   }
 
