@@ -1,17 +1,22 @@
 /**
- * background.js — Service Worker for Badge Updates
+ * background.js — Service Worker for Badge Updates & Recently Closed
  *
  * Chrome's "always-on" background script for Tab View.
- * Its only job: keep the toolbar badge showing the current open tab count.
+ * Responsibilities:
+ * 1. Keep the toolbar badge showing the current open tab count
+ * 2. Track all open tabs' info so we can save to Recently Closed when closed
  *
- * Since we no longer have a server, we query chrome.tabs directly.
- * The badge counts real web tabs (skipping chrome:// and extension pages).
- *
- * Color coding gives a quick at-a-glance health signal:
+ * Badge color coding gives a quick at-a-glance health signal:
  *   Green  (#3d7a4a) → 1–10 tabs  (focused, manageable)
  *   Amber  (#b8892e) → 11–20 tabs (getting busy)
  *   Red    (#b35a5a) → 21+ tabs   (time to cull!)
  */
+
+const MAX_RECENTLY_CLOSED = 50;
+
+// Cache of all open tabs' info (keyed by tabId)
+// This allows us to get URL/title when a tab is closed (onRemoved doesn't provide it)
+const tabsCache = new Map();
 
 // ─── Badge updater ────────────────────────────────────────────────────────────
 
@@ -24,6 +29,16 @@
 async function updateBadge() {
   try {
     const tabs = await chrome.tabs.query({});
+
+    // Update tabs cache with current info
+    tabs.forEach(tab => {
+      if (tab.id && tab.url) {
+        tabsCache.set(tab.id, {
+          url: tab.url,
+          title: tab.title || tab.url,
+        });
+      }
+    });
 
     // Only count actual web pages — skip browser internals and extension pages
     const count = tabs.filter(t => {
@@ -60,6 +75,56 @@ async function updateBadge() {
   }
 }
 
+// ─── Recently Closed tracker ───────────────────────────────────────────────────
+
+/**
+ * addToRecentlyClosed(tab)
+ *
+ * Saves a closed tab to the recently closed list in storage.
+ */
+async function addToRecentlyClosed(tab) {
+  // Skip chrome internal pages
+  const url = tab.url || '';
+  if (
+    url.startsWith('chrome://') ||
+    url.startsWith('chrome-extension://') ||
+    url.startsWith('about:') ||
+    url.startsWith('edge://') ||
+    url.startsWith('brave://')
+  ) {
+    return;
+  }
+
+  try {
+    const { recentlyClosed = [] } = await chrome.storage.local.get('recentlyClosed');
+
+    // Get favicon from URL
+    let favicon = '';
+    try {
+      const domain = new URL(url).hostname.replace(/^www\./, '');
+      favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+    } catch {}
+
+    // Add new entry at the beginning (most recent)
+    recentlyClosed.unshift({
+      id:        Date.now().toString(),
+      url:       url,
+      title:     tab.title || url,
+      closedAt:  new Date().toISOString(),
+      favicon:   favicon,
+    });
+
+    // Keep only the most recent entries
+    if (recentlyClosed.length > MAX_RECENTLY_CLOSED) {
+      recentlyClosed.splice(MAX_RECENTLY_CLOSED);
+    }
+
+    await chrome.storage.local.set({ recentlyClosed });
+  } catch (err) {
+    console.warn('[tab-view] Failed to save to recently closed:', err);
+  }
+}
+
 // ─── Event listeners ──────────────────────────────────────────────────────────
 
 // Update badge when the extension is first installed
@@ -72,18 +137,36 @@ chrome.runtime.onStartup.addListener(() => {
   updateBadge();
 });
 
-// Update badge whenever a tab is opened
-chrome.tabs.onCreated.addListener(() => {
+// Track new tabs and update badge
+chrome.tabs.onCreated.addListener((tab) => {
+  if (tab.id && tab.url) {
+    tabsCache.set(tab.id, {
+      url: tab.url,
+      title: tab.title || tab.url,
+    });
+  }
   updateBadge();
 });
 
-// Update badge whenever a tab is closed
-chrome.tabs.onRemoved.addListener(() => {
+// Track closed tabs — save to Recently Closed and update badge
+chrome.tabs.onRemoved.addListener((tabId) => {
+  // Get tab info from cache before removing
+  const tabInfo = tabsCache.get(tabId);
+  if (tabInfo) {
+    addToRecentlyClosed(tabInfo);
+    tabsCache.delete(tabId);
+  }
   updateBadge();
 });
 
-// Update badge when a tab's URL changes (e.g. navigating to/from chrome://)
-chrome.tabs.onUpdated.addListener(() => {
+// Track tab URL/title changes and update badge
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (tabId && (changeInfo.url || changeInfo.title)) {
+    tabsCache.set(tabId, {
+      url: tab.url,
+      title: tab.title || tab.url,
+    });
+  }
   updateBadge();
 });
 
