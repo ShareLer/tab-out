@@ -1,5 +1,5 @@
 /* ================================================================
-   Tab Out — Dashboard App (Pure Extension Edition)
+   Tab View — Dashboard App (Pure Extension Edition)
 
    This file is the brain of the dashboard. Now that the dashboard
    IS the extension page (not inside an iframe), it can call
@@ -30,7 +30,7 @@ let openTabs = [];
  * fetchOpenTabs()
  *
  * Reads all currently open browser tabs directly from Chrome.
- * Sets the extensionId flag so we can identify Tab Out's own pages.
+ * Sets the extensionId flag so we can identify Tab View's own pages.
  */
 async function fetchOpenTabs() {
   try {
@@ -45,7 +45,7 @@ async function fetchOpenTabs() {
       title:    t.title,
       windowId: t.windowId,
       active:   t.active,
-      // Flag Tab Out's own pages so we can detect duplicate new tabs
+      // Flag Tab View's own pages so we can detect duplicate new tabs
       isTabOut: t.url === newtabUrl || t.url === 'chrome://newtab/',
     }));
   } catch {
@@ -980,15 +980,18 @@ function getGreeting() {
 }
 
 /**
- * getDateDisplay() — "Friday, April 4, 2026"
+ * getDateDisplay() — "2026.04.17 | 星期四"
  */
 function getDateDisplay() {
-  return new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    year:    'numeric',
-    month:   'long',
-    day:     'numeric',
-  });
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  const weekday = weekdays[now.getDay()];
+
+  return `${year}.${month}.${day} | ${weekday}`;
 }
 
 
@@ -2119,7 +2122,7 @@ document.addEventListener('input', async (e) => {
 
 const SIDEBAR_MIN_WIDTH = 140;
 const SIDEBAR_MAX_WIDTH = 600; // Allow sidebar to take up more space
-const SIDEBAR_STORAGE_KEY = 'tabOut-sidebarWidth';
+const SIDEBAR_STORAGE_KEY = 'tabView-sidebarWidth';
 
 function initSidebarResizer() {
   const resizer = document.getElementById('sidebarResizer');
@@ -2187,3 +2190,46 @@ function initSidebarResizer() {
    ---------------------------------------------------------------- */
 renderDashboard();
 initSidebarResizer();
+setupTabChangeListener();
+
+
+/* ----------------------------------------------------------------
+   TAB CHANGE LISTENER — auto-refresh dashboard when tabs change
+
+   Monitors chrome.tabs events and re-renders the dashboard when:
+   - A new tab is opened
+   - A tab is closed
+   - A tab's URL changes (navigation)
+   ---------------------------------------------------------------- */
+
+function setupTabChangeListener() {
+  // Debounce timer to avoid rapid re-renders
+  let refreshTimer = null;
+  const REFRESH_DELAY = 300; // Wait 300ms before refreshing
+
+  function scheduleRefresh() {
+    if (refreshTimer) clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => {
+      renderDashboard();
+      refreshTimer = null;
+    }, REFRESH_DELAY);
+  }
+
+  // Listen for new tabs
+  chrome.tabs.onCreated.addListener(() => {
+    scheduleRefresh();
+  });
+
+  // Listen for closed tabs
+  chrome.tabs.onRemoved.addListener(() => {
+    scheduleRefresh();
+  });
+
+  // Listen for tab URL changes (navigation)
+  chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
+    // Only refresh when URL actually changes (not just status/title)
+    if (changeInfo.url) {
+      scheduleRefresh();
+    }
+  });
+}
