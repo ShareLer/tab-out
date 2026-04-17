@@ -2219,6 +2219,8 @@ function setupTabChangeListener() {
 
   // Cache of tabs' URL without query string to detect non-query URL changes
   const tabsUrlCache = new Map();
+  // Cache of tabs' titles to detect first meaningful title load
+  const tabsTitleCache = new Map();
 
   /**
    * getUrlWithoutQuery(url)
@@ -2251,6 +2253,50 @@ function setupTabChangeListener() {
     return newBaseUrl !== oldBaseUrl;
   }
 
+  /**
+   * isTitleChangeMeaningful(tabId, newTitle, tabUrl)
+   * Determines if title change is meaningful and requires refresh.
+   *
+   * Meaningful changes include:
+   * 1. First meaningful title load: from empty/URL placeholder to real title
+   * 2. Title becomes richer: new title is longer than old title by >= 5 chars
+   *    (e.g., "Cooper" -> "Cooper - 文档详情页")
+   *
+   * NOT meaningful (won't refresh):
+   * - Title becomes shorter or stays same length (e.g., "(3) Gmail" -> "Gmail")
+   * - Counter changes (e.g., "(3) Gmail" -> "(5) Gmail")
+   */
+  function isTitleChangeMeaningful(tabId, newTitle, tabUrl) {
+    const oldTitle = tabsTitleCache.get(tabId) || '';
+    const urlWithoutQuery = getUrlWithoutQuery(tabUrl || '');
+
+    // Update cache
+    tabsTitleCache.set(tabId, newTitle);
+
+    // Check 1: First meaningful title load
+    // oldTitle was placeholder (empty or URL-like)
+    const wasPlaceholder = !oldTitle || oldTitle === tabUrl || oldTitle === urlWithoutQuery;
+    // newTitle is meaningful (not empty, not URL-like)
+    const newIsMeaningful = newTitle && newTitle !== tabUrl && newTitle !== urlWithoutQuery;
+    if (wasPlaceholder && newIsMeaningful) {
+      return true;
+    }
+
+    // Check 2: Title becomes significantly richer/longer
+    // This catches cases like "Cooper" -> "Cooper - 文档详情页"
+    if (oldTitle && newTitle) {
+      // Compare stripped titles (remove counters like "(3)")
+      const oldStripped = oldTitle.replace(/^\([\d,]+\)\s*/, '');
+      const newStripped = newTitle.replace(/^\([\d,]+\)\s*/, '');
+      // Refresh if new stripped title is at least 5 chars longer
+      if (newStripped.length >= oldStripped.length + 5) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   function scheduleRefresh() {
     // Skip refresh if paused (e.g., during card animation)
     if (isRefreshPaused) return;
@@ -2270,6 +2316,9 @@ function setupTabChangeListener() {
       if (tab.id && tab.url) {
         tabsUrlCache.set(tab.id, getUrlWithoutQuery(tab.url));
       }
+      if (tab.id && tab.title) {
+        tabsTitleCache.set(tab.id, tab.title);
+      }
     });
   });
 
@@ -2278,20 +2327,31 @@ function setupTabChangeListener() {
     if (tab.id && tab.url) {
       tabsUrlCache.set(tab.id, getUrlWithoutQuery(tab.url));
     }
+    if (tab.id && tab.title) {
+      tabsTitleCache.set(tab.id, tab.title);
+    }
     scheduleRefresh();
   });
 
   // Listen for closed tabs - always refresh
   chrome.tabs.onRemoved.addListener((tabId) => {
     tabsUrlCache.delete(tabId);
+    tabsTitleCache.delete(tabId);
     scheduleRefresh();
   });
 
-  // Listen for tab URL changes - refresh unless only query changed
-  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-    // Only check when URL actually changes
+  // Listen for tab URL and title changes
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    // Check URL changes - refresh unless only query changed
     if (changeInfo.url) {
       if (needsRefreshForUrlChange(tabId, changeInfo.url)) {
+        scheduleRefresh();
+      }
+    }
+
+    // Check title changes - refresh only on meaningful title change
+    if (changeInfo.title) {
+      if (isTitleChangeMeaningful(tabId, changeInfo.title, tab.url)) {
         scheduleRefresh();
       }
     }
