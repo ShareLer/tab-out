@@ -209,6 +209,41 @@ header {
   margin-left: 4px;
 }
 
+/* Toggle collapse button in section header */
+.toggle-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.toggle-collapse-btn:hover {
+  background: rgba(154, 145, 138, 0.1);
+  color: var(--ink);
+}
+
+.toggle-chevron {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.toggle-collapse-btn.collapsed .toggle-chevron {
+  transform: rotate(-90deg);
+}
+
+/* Collapsed state - hide list and empty state */
+.deferred-column.collapsed .deferred-list,
+.deferred-column.collapsed .deferred-empty {
+  display: none !important;
+}
+
 /* ---- Mission Cards ---- */
 .missions {
   columns: 280px;

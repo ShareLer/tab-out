@@ -2184,14 +2184,6 @@ function initSidebarResizer() {
 
 
 /* ----------------------------------------------------------------
-   INITIALIZE
-   ---------------------------------------------------------------- */
-renderDashboard();
-initSidebarResizer();
-setupTabChangeListener();
-
-
-/* ----------------------------------------------------------------
    TAB CHANGE LISTENER — auto-refresh dashboard when tabs change
 
    Monitors chrome.tabs events and re-renders the dashboard when:
@@ -2357,3 +2349,46 @@ function setupTabChangeListener() {
     }
   });
 }
+
+
+/* ----------------------------------------------------------------
+   RECENTLY CLOSED COLLAPSE TOGGLE
+
+   Allow user to collapse/expand the Recently Closed section.
+   State is saved in localStorage.
+   ---------------------------------------------------------------- */
+
+const RECENTLY_CLOSED_COLLAPSED_KEY = 'tabView-recentlyClosedCollapsed';
+
+function initRecentlyClosedToggle() {
+  const toggleBtn = document.getElementById('recentlyClosedToggle');
+  const column    = document.getElementById('deferredColumn');
+
+  if (!toggleBtn || !column) return;
+
+  // Restore saved state
+  const isCollapsed = localStorage.getItem(RECENTLY_CLOSED_COLLAPSED_KEY) === 'true';
+  if (isCollapsed) {
+    column.classList.add('collapsed');
+    toggleBtn.classList.add('collapsed');
+  }
+
+  // Toggle on click
+  toggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const nowCollapsed = column.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('collapsed');
+
+    // Save state
+    localStorage.setItem(RECENTLY_CLOSED_COLLAPSED_KEY, nowCollapsed.toString());
+  });
+}
+
+
+/* ----------------------------------------------------------------
+   INITIALIZE
+   ---------------------------------------------------------------- */
+renderDashboard();
+initSidebarResizer();
+setupTabChangeListener();
+initRecentlyClosedToggle();
