@@ -990,7 +990,7 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   }
 }
 
-/* ---- Checklist items ---- */
+/* ---- Recently Closed items ---- */
 .deferred-item {
   display: flex;
   align-items: flex-start;
@@ -998,10 +998,25 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   padding: 10px 0;
   border-bottom: 1px solid rgba(154, 145, 138, 0.12);
   animation: fadeUp 0.3s ease both;
+  /* Smooth transition when item is removed - other items will slide smoothly */
+  transition: opacity 0.25s ease, transform 0.25s ease, max-height 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+  max-height: 100px;
+  overflow: hidden;
 }
 
 .deferred-item:last-child {
   border-bottom: none;
+}
+
+/* Removing state - collapse height and fade out */
+.deferred-item.removing {
+  opacity: 0;
+  transform: translateX(20px);
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 /* Reopen button (restore recently closed tab) */
@@ -1124,13 +1139,6 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 .deferred-dismiss:hover {
   opacity: 1;
   color: var(--status-abandoned);
-}
-
-/* Slide-out animation for items being removed */
-.deferred-item.removing {
-  opacity: 0;
-  transform: translateX(20px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 /* ---- Empty state ---- */

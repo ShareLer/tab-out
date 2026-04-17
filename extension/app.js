@@ -1457,6 +1457,32 @@ function renderRecentlyClosedItem(item) {
     </div>`;
 }
 
+/**
+ * updateRecentlyClosedCount()
+ *
+ * Updates the count display without re-rendering the entire list.
+ * Also handles empty state visibility.
+ */
+function updateRecentlyClosedCount() {
+  const countEl = document.getElementById('deferredCount');
+  const list    = document.getElementById('deferredList');
+  const empty   = document.getElementById('deferredEmpty');
+
+  if (!countEl || !list || !empty) return;
+
+  const itemCount = list.querySelectorAll('.deferred-item').length;
+  countEl.textContent = itemCount > 0 ? `${itemCount}` : '';
+
+  // Show/hide empty state
+  if (itemCount === 0) {
+    list.style.display = 'none';
+    empty.style.display = 'block';
+  } else {
+    list.style.display = 'block';
+    empty.style.display = 'none';
+  }
+}
+
 
 /* ----------------------------------------------------------------
    MAIN DASHBOARD RENDERER
@@ -1890,7 +1916,8 @@ document.addEventListener('click', async (e) => {
       item.classList.add('removing');
       setTimeout(() => {
         item.remove();
-        renderRecentlyClosedColumn();
+        // Update count only, don't re-render entire list
+        updateRecentlyClosedCount();
       }, 300);
     }
     return;
@@ -1909,7 +1936,8 @@ document.addEventListener('click', async (e) => {
       item.classList.add('removing');
       setTimeout(() => {
         item.remove();
-        renderRecentlyClosedColumn();
+        // Update count only, don't re-render entire list
+        updateRecentlyClosedCount();
       }, 300);
     }
     return;
