@@ -2111,6 +2111,79 @@ document.addEventListener('input', async (e) => {
 
 
 /* ----------------------------------------------------------------
+   SIDEBAR RESIZER — drag to resize sidebar width
+
+   Uses pointer events for smooth dragging experience.
+   Stores the preferred width in localStorage for persistence.
+   ---------------------------------------------------------------- */
+
+const SIDEBAR_MIN_WIDTH = 140;
+const SIDEBAR_MAX_WIDTH = 600; // Allow sidebar to take up more space
+const SIDEBAR_STORAGE_KEY = 'tabOut-sidebarWidth';
+
+function initSidebarResizer() {
+  const resizer = document.getElementById('sidebarResizer');
+  const sidebar = document.getElementById('sidebar');
+
+  if (!resizer || !sidebar) return;
+
+  // Restore saved width from localStorage
+  const savedWidth = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+  if (savedWidth) {
+    const width = parseInt(savedWidth);
+    if (width >= SIDEBAR_MIN_WIDTH && width <= SIDEBAR_MAX_WIDTH) {
+      sidebar.style.width = width + 'px';
+    }
+  }
+
+  let isDragging = false;
+  let startX = 0;
+  let startWidth = 0;
+
+  resizer.addEventListener('pointerdown', (e) => {
+    isDragging = true;
+    startX = e.clientX;
+    startWidth = sidebar.offsetWidth;
+
+    resizer.classList.add('dragging');
+    resizer.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  resizer.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+
+    const deltaX = e.clientX - startX;
+    const newWidth = startWidth + deltaX;
+
+    // Clamp to min/max bounds
+    const clampedWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, newWidth));
+    sidebar.style.width = clampedWidth + 'px';
+  });
+
+  resizer.addEventListener('pointerup', (e) => {
+    if (!isDragging) return;
+
+    isDragging = false;
+    resizer.classList.remove('dragging');
+    resizer.releasePointerCapture(e.pointerId);
+
+    // Save the new width to localStorage
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebar.offsetWidth.toString());
+  });
+
+  resizer.addEventListener('pointercancel', (e) => {
+    if (!isDragging) return;
+
+    isDragging = false;
+    resizer.classList.remove('dragging');
+    resizer.releasePointerCapture(e.pointerId);
+  });
+}
+
+
+/* ----------------------------------------------------------------
    INITIALIZE
    ---------------------------------------------------------------- */
 renderDashboard();
+initSidebarResizer();

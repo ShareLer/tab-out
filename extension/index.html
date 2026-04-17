@@ -12,108 +12,122 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="container">
 
-
+<!-- ================================================================
+     MAIN LAYOUT — sidebar on left, content on right
+     ================================================================ -->
+<div class="main-layout">
 
   <!-- ================================================================
-       HEADER — greeting on the left
+       SIDEBAR — greeting, date, and future content
        ================================================================ -->
-  <header>
-    <div class="header-left">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-content">
       <!-- "Good afternoon" — written by getGreeting() in app.js -->
       <h1 id="greeting"></h1>
       <!-- "Friday, April 4, 2026" — written by getDateDisplay() in app.js -->
-      <div class="date" id="dateDisplay"></div>
+      <div class="sidebar-date" id="dateDisplay"></div>
     </div>
-  </header>
+  </aside>
 
   <!-- ================================================================
-       QUICK LINKS SECTION — always visible at the top
-       Plus button moved here for adding new links
+       RESIZER — draggable divider between sidebar and content
        ================================================================ -->
-  <div class="quick-links-section" id="quickLinksSection">
-    <div class="section-header">
-      <h2>Quick links</h2>
-      <div class="section-line"></div>
-      <div class="section-count" id="quickLinksCount"></div>
-      <button class="add-link-btn" data-action="show-add-link-modal" title="Add a quick link">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-      </button>
-    </div>
-    <div class="quick-links-container" id="quickLinksContainer"></div>
-    <!-- Empty state message shown when no links -->
-    <div class="quick-links-empty" id="quickLinksEmpty" style="display:none">
-      Click the + button above to add your favorite pages
-    </div>
-  </div>
+  <div class="sidebar-resizer" id="sidebarResizer"></div>
 
   <!-- ================================================================
-       MAIN CONTENT AREA — two-column layout
-       Left: open tabs (domain/mission cards)
-       Right: saved for later checklist
-       The right column only renders when it has items (JS controls this)
+       CONTENT AREA — quick links, open tabs, saved for later
        ================================================================ -->
-  <div class="dashboard-columns" id="dashboardColumns">
+  <div class="content-area">
 
-    <!-- LEFT COLUMN: Open tabs -->
-    <div class="active-section" id="openTabsSection" style="display:none">
+    <!-- ================================================================
+         QUICK LINKS SECTION — always visible at the top
+         Plus button moved here for adding new links
+         ================================================================ -->
+    <div class="quick-links-section" id="quickLinksSection">
       <div class="section-header">
-        <h2 id="openTabsSectionTitle">Right now</h2>
+        <h2>Quick links</h2>
         <div class="section-line"></div>
-        <div class="section-count" id="openTabsSectionCount"></div>
-      </div>
-      <div class="missions" id="openTabsMissions"></div>
-    </div>
-
-    <!-- RIGHT COLUMN: Saved for Later checklist -->
-    <div class="deferred-column" id="deferredColumn" style="display:none">
-      <div class="section-header">
-        <h2>Saved for later</h2>
-        <div class="section-line"></div>
-        <div class="section-count" id="deferredCount"></div>
-      </div>
-
-      <!-- Active checklist items — injected by renderDeferredList() in app.js -->
-      <div class="deferred-list" id="deferredList"></div>
-
-      <!-- Empty state — shown when no active deferred tabs -->
-      <div class="deferred-empty" id="deferredEmpty" style="display:none">
-        Nothing saved. Living in the moment.
-      </div>
-
-      <!-- Archive section — collapsed by default -->
-      <div class="deferred-archive" id="deferredArchive" style="display:none">
-        <button class="archive-toggle" id="archiveToggle">
-          <svg class="archive-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
-          Archive
-          <span class="archive-count" id="archiveCount"></span>
+        <div class="section-count" id="quickLinksCount"></div>
+        <button class="add-link-btn" data-action="show-add-link-modal" title="Add a quick link">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
         </button>
-        <div class="archive-body" id="archiveBody" style="display:none">
-          <input type="text" class="archive-search" id="archiveSearch" placeholder="Search archived tabs...">
-          <div class="archive-list" id="archiveList"></div>
+      </div>
+      <div class="quick-links-container" id="quickLinksContainer"></div>
+      <!-- Empty state message shown when no links -->
+      <div class="quick-links-empty" id="quickLinksEmpty" style="display:none">
+        Click the + button above to add your favorite pages
+      </div>
+    </div>
+
+    <!-- ================================================================
+         MAIN CONTENT AREA — two-column layout
+         Left: open tabs (domain/mission cards)
+         Right: saved for later checklist
+         The right column only renders when it has items (JS controls this)
+         ================================================================ -->
+    <div class="dashboard-columns" id="dashboardColumns">
+
+      <!-- LEFT COLUMN: Open tabs -->
+      <div class="active-section" id="openTabsSection" style="display:none">
+        <div class="section-header">
+          <h2 id="openTabsSectionTitle">Right now</h2>
+          <div class="section-line"></div>
+          <div class="section-count" id="openTabsSectionCount"></div>
+        </div>
+        <div class="missions" id="openTabsMissions"></div>
+      </div>
+
+      <!-- RIGHT COLUMN: Saved for Later checklist -->
+      <div class="deferred-column" id="deferredColumn" style="display:none">
+        <div class="section-header">
+          <h2>Saved for later</h2>
+          <div class="section-line"></div>
+          <div class="section-count" id="deferredCount"></div>
+        </div>
+
+        <!-- Active checklist items — injected by renderDeferredList() in app.js -->
+        <div class="deferred-list" id="deferredList"></div>
+
+        <!-- Empty state — shown when no active deferred tabs -->
+        <div class="deferred-empty" id="deferredEmpty" style="display:none">
+          Nothing saved. Living in the moment.
+        </div>
+
+        <!-- Archive section — collapsed by default -->
+        <div class="deferred-archive" id="deferredArchive" style="display:none">
+          <button class="archive-toggle" id="archiveToggle">
+            <svg class="archive-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+            Archive
+            <span class="archive-count" id="archiveCount"></span>
+          </button>
+          <div class="archive-body" id="archiveBody" style="display:none">
+            <input type="text" class="archive-search" id="archiveSearch" placeholder="Search archived tabs...">
+            <div class="archive-list" id="archiveList"></div>
+          </div>
         </div>
       </div>
-    </div>
 
-  </div><!-- end .dashboard-columns -->
+    </div><!-- end .dashboard-columns -->
 
-  <!-- ================================================================
-       FOOTER — global stats + refresh control
-       ================================================================ -->
-  <footer>
-    <div class="footer-stats">
-      <div class="stat">
-        <div class="stat-num" id="statTabs">—</div>
-        <div class="stat-label">Open tabs</div>
+    <!-- ================================================================
+         FOOTER — global stats + refresh control
+         ================================================================ -->
+    <footer>
+      <div class="footer-stats">
+        <div class="stat">
+          <div class="stat-num" id="statTabs">—</div>
+          <div class="stat-label">Open tabs</div>
+        </div>
       </div>
-    </div>
-    <div class="last-refresh">
-      <span style="color: var(--muted); font-size: 11px;"><a href="https://github.com/zarazhangrui/tab-out" target="_top" style="color: var(--muted); text-decoration: underline; text-underline-offset: 2px;">Tab Out</a> by <a href="https://x.com/zarazhangrui" target="_top" style="color: var(--muted); text-decoration: underline; text-underline-offset: 2px;">Zara</a></span>
-    </div>
-  </footer>
+      <div class="last-refresh">
+        <span style="color: var(--muted); font-size: 11px;"><a href="https://github.com/zarazhangrui/tab-out" target="_top" style="color: var(--muted); text-decoration: underline; text-underline-offset: 2px;">Tab Out</a> by <a href="https://x.com/zarazhangrui" target="_top" style="color: var(--muted); text-decoration: underline; text-underline-offset: 2px;">Zara</a></span>
+      </div>
+    </footer>
 
-</div><!-- end .container -->
+  </div><!-- end .content-area -->
+
+</div><!-- end .main-layout -->
 
 <!-- ================================================================
      ADD LINK MODAL — popup form for adding quick links

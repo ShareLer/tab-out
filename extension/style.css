@@ -54,7 +54,98 @@ body::before {
   max-width: 1300px;
 }
 
-/* ---- Header ---- */
+/* ---- Main Layout: Sidebar + Content ---- */
+.main-layout {
+  display: flex;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Sidebar (Left) ---- */
+.sidebar {
+  width: 200px;
+  min-width: 140px; /* Minimum sidebar width */
+  flex-shrink: 0;
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* ---- Sidebar Resizer (Draggable Divider) ---- */
+.sidebar-resizer {
+  width: 8px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  transition: background 0.15s ease;
+}
+
+/* Visual indicator line in the center of resizer */
+.sidebar-resizer::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--warm-gray);
+  transition: background 0.15s ease, width 0.15s ease;
+}
+
+/* Highlight on hover */
+.sidebar-resizer:hover::after {
+  background: var(--accent-amber);
+  width: 2px;
+}
+
+/* Active dragging state */
+.sidebar-resizer.dragging::after {
+  background: var(--accent-amber);
+  width: 2px;
+}
+
+.sidebar-resizer.dragging {
+  background: rgba(200, 113, 58, 0.08);
+}
+
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar h1 {
+  font-family: 'Newsreader', serif;
+  font-weight: 300;
+  font-size: 28px;
+  letter-spacing: -0.5px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.sidebar-date {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ---- Content Area (Right) ---- */
+.content-area {
+  flex: 1;
+  padding: 48px 32px 80px;
+  min-width: 0; /* Allow shrinking to fill available space */
+}
+
+/* ---- Old Header (now replaced by sidebar) ---- */
 header {
   display: flex;
   justify-content: space-between;
@@ -600,7 +691,7 @@ footer {
   to { opacity: 1; transform: translateY(0); }
 }
 
-header { animation: fadeUp 0.5s ease both; }
+.sidebar { animation: fadeUp 0.5s ease both; }
 .tab-cleanup-banner { animation: fadeUp 0.5s ease 0.1s both; }
 .nudge-banner { animation: fadeUp 0.5s ease 0.15s both; }
 .active-section .section-header { animation: fadeUp 0.5s ease 0.2s both; }
@@ -841,7 +932,7 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 /* Open tabs column keeps the grid layout */
 .dashboard-columns .active-section {
   flex: 1;
-  min-width: 600px;
+  min-width: 0; /* Allow shrinking to fill available space */
 }
 
 /* Saved for later column — fixed width on the right, scrolls independently */
@@ -854,7 +945,41 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   overflow-y: auto;
 }
 
-/* On narrow screens, stack vertically */
+/* On medium screens, reduce sidebar width */
+@media (max-width: 1100px) {
+  .sidebar {
+    width: 160px;
+    padding: 32px 16px;
+  }
+  .sidebar h1 {
+    font-size: 22px;
+  }
+  .content-area {
+    padding: 32px 24px 60px;
+  }
+}
+
+/* On narrow screens, stack sidebar at top and content below */
+@media (max-width: 900px) {
+  .main-layout {
+    flex-direction: column;
+  }
+  .sidebar-resizer {
+    display: none; /* Hide resizer on narrow screens */
+  }
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    border-bottom: 1px solid var(--warm-gray);
+    padding: 24px 32px;
+  }
+  .sidebar h1 {
+    font-size: 24px;
+  }
+}
+
+/* On very narrow screens, stack dashboard columns vertically */
 @media (max-width: 800px) {
   .dashboard-columns {
     flex-direction: column;
