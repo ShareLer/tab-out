@@ -1453,10 +1453,13 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   gap: 4px;
   opacity: 0;
   transition: opacity 0.15s;
+  transition-delay: 0s; /* Immediately hide when mouse leaves */
 }
 
+/* Show buttons after 1s hover delay */
 .quick-link-card:hover .quick-link-actions {
   opacity: 1;
+  transition-delay: 1s;
 }
 
 .quick-link-edit,
