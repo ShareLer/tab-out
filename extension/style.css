@@ -1392,6 +1392,8 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 
 .quick-link-card:hover {
   transform: translateY(-2px);
+  background: var(--warm-gray);
+  cursor: pointer;
 }
 
 .quick-link-link {
@@ -1550,14 +1552,14 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  background: var(--card-bg);
-  border: 2px solid var(--accent-amber);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(200, 113, 58, 0.35),
-              0 2px 8px rgba(0, 0, 0, 0.1);
-  opacity: 0.98;
-  transform: scale(1.12);
+  background: var(--warm-gray);
+  border: 1px solid var(--warm-gray);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  opacity: 0.95;
+  transform: scale(1.05);
   will-change: left, top; /* Optimize for animation */
+  cursor: grabbing;
 }
 
 .quick-link-drag-ghost .quick-link-icon {
@@ -1565,7 +1567,7 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   height: 48px;
   border-radius: 50%;
   background: var(--card-bg);
-  border: 2px solid var(--accent-amber);
+  border: 1px solid var(--warm-gray);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1598,8 +1600,8 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
     transform: scale(0.8);
   }
   to {
-    opacity: 0.98;
-    transform: scale(1.12);
+    opacity: 0.95;
+    transform: scale(1.05);
   }
 }
 
