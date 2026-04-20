@@ -1764,7 +1764,8 @@ document.addEventListener('click', async (e) => {
       : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="pin-svg"><path d="M16 12V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v8c0 1.1.9 2 2 2h2v6l2 2 2-2v-6h2c1.1 0 2-.9 2-2z"/></svg>`;
     actionEl.innerHTML = newIcon;
 
-    // No need to re-render entire dashboard
+    // Re-render dashboard to apply new sorting order
+    await renderDashboard();
     return;
   }
 
