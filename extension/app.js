@@ -1341,7 +1341,7 @@ function renderDomainCard(group, isPinned = false) {
     if (!seen.has(tab.url)) { seen.add(tab.url); uniqueTabs.push(tab); }
   }
 
-  const visibleTabs = uniqueTabs.slice(0, 8);
+  const visibleTabs = uniqueTabs.slice(0, 12);
   const extraCount  = uniqueTabs.length - visibleTabs.length;
 
   const pageChips = visibleTabs.map(tab => {
@@ -1368,7 +1368,7 @@ function renderDomainCard(group, isPinned = false) {
         </button>
       </div>
     </div>`;
-  }).join('') + (extraCount > 0 ? buildOverflowChips(uniqueTabs.slice(8), urlCounts) : '');
+  }).join('') + (extraCount > 0 ? buildOverflowChips(uniqueTabs.slice(12), urlCounts) : '');
 
   let actionsHtml = `
     <button class="action-btn close-tabs" data-action="close-domain-tabs" data-domain-id="${stableId}">
