@@ -1442,6 +1442,22 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   color: var(--accent-amber);
 }
 
+/* Quick link action buttons container */
+.quick-link-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.quick-link-card:hover .quick-link-actions {
+  opacity: 1;
+}
+
+.quick-link-edit,
 .quick-link-remove {
   display: inline-flex;
   align-items: center;
@@ -1452,22 +1468,21 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   color: var(--muted);
   cursor: pointer;
   padding: 4px;
-  opacity: 0;
   transition: opacity 0.15s, color 0.15s, background 0.15s, border-color 0.15s;
-  position: absolute;
-  top: 0;
-  right: 0;
   width: 20px;
   height: 20px;
 }
 
+.quick-link-edit svg,
 .quick-link-remove svg {
   width: 10px;
   height: 10px;
 }
 
-.quick-link-card:hover .quick-link-remove {
-  opacity: 1;
+.quick-link-edit:hover {
+  color: var(--accent-amber);
+  background: rgba(200, 113, 58, 0.08);
+  border-color: var(--accent-amber);
 }
 
 .quick-link-remove:hover {
@@ -1484,13 +1499,9 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   user-select: none;
   -webkit-user-select: none;
   touch-action: none; /* Prevent touch scrolling during drag */
-  cursor: grab;
 }
 
-.quick-link-card:active {
-  cursor: grabbing;
-}
-
+/* Show grabbing cursor only during actual drag */
 .quick-link-card.dragging {
   opacity: 0 !important;
   pointer-events: none !important;
@@ -1518,13 +1529,13 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 }
 
 /* Enable pointer events only for specific interactive elements inside the card */
-.quick-link-remove {
+.quick-link-actions {
   pointer-events: auto;
 }
 
 /* During drag, disable all interactions */
 .quick-link-card.dragging .quick-link-link,
-.quick-link-card.dragging .quick-link-remove {
+.quick-link-card.dragging .quick-link-actions {
   pointer-events: none !important;
 }
 
@@ -1577,7 +1588,7 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   max-width: 100%;
 }
 
-.quick-link-drag-ghost .quick-link-remove {
+.quick-link-drag-ghost .quick-link-actions {
   display: none;
 }
 

@@ -407,6 +407,21 @@ async function removeQuickLink(id) {
   }
 }
 
+/**
+ * updateQuickLink(id, url, title)
+ *
+ * Updates an existing quick link in storage.
+ */
+async function updateQuickLink(id, url, title) {
+  const links = await getQuickLinks();
+  const idx = links.findIndex(l => l.id === id);
+  if (idx !== -1) {
+    links[idx].url = url;
+    links[idx].title = title || url;
+    await saveQuickLinks(links);
+  }
+}
+
 
 /* ----------------------------------------------------------------
    RENDER QUICK LINKS
@@ -458,9 +473,14 @@ async function renderQuickLinks() {
         </div>
         <span class="quick-link-title">${displayTitle}</span>
       </a>
-      <button class="quick-link-remove" data-action="remove-quick-link" data-quick-link-id="${link.id}" title="Remove this link">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-      </button>
+      <div class="quick-link-actions">
+        <button class="quick-link-edit" data-action="edit-quick-link" data-quick-link-id="${link.id}" data-quick-link-url="${safeUrl}" data-quick-link-title="${safeTitle}" title="Edit this link">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" /></svg>
+        </button>
+        <button class="quick-link-remove" data-action="remove-quick-link" data-quick-link-id="${link.id}" title="Remove this link">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
     </div>`;
   }).join('');
 
@@ -515,8 +535,14 @@ function setupQuickLinksDragHandlers(container) {
 }
 
 function handlePointerDown(e) {
-  // Don't start drag from remove button or modal
-  if (e.target.closest('.quick-link-remove') || e.target.closest('.modal-overlay')) {
+  // Only handle left mouse button (button 0)
+  // Ignore right-click (button 2), middle-click (button 1), etc.
+  if (e.button !== 0) {
+    return;
+  }
+
+  // Don't start drag from action buttons or modal
+  if (e.target.closest('.quick-link-actions') || e.target.closest('.modal-overlay')) {
     return;
   }
 
@@ -1761,6 +1787,13 @@ document.addEventListener('click', async (e) => {
     const modal = document.getElementById('addLinkModal');
     if (modal) {
       modal.style.display = 'none';
+      // Clear edit mode
+      delete modal.dataset.editLinkId;
+      // Reset modal title and button text
+      const modalTitle = modal.querySelector('.modal-header h3');
+      if (modalTitle) modalTitle.textContent = 'Add Quick Link';
+      const saveBtn = modal.querySelector('[data-action="save-quick-link"]');
+      if (saveBtn) saveBtn.textContent = 'Add Link';
       // Clear the inputs
       const urlInput = document.getElementById('addLinkUrl');
       const titleInput = document.getElementById('addLinkTitle');
@@ -1772,6 +1805,7 @@ document.addEventListener('click', async (e) => {
 
   // ---- Save quick link ----
   if (action === 'save-quick-link') {
+    const modal = document.getElementById('addLinkModal');
     const urlInput = document.getElementById('addLinkUrl');
     const titleInput = document.getElementById('addLinkTitle');
     const url = urlInput ? urlInput.value.trim() : '';
@@ -1790,17 +1824,63 @@ document.addEventListener('click', async (e) => {
       return;
     }
 
-    // Add to storage
-    await addQuickLink(url, title);
+    // Check if this is edit mode or add mode
+    const editLinkId = modal ? modal.dataset.editLinkId : null;
 
-    // Close modal and clear inputs
-    const modal = document.getElementById('addLinkModal');
-    if (modal) modal.style.display = 'none';
+    if (editLinkId) {
+      // Update existing link
+      await updateQuickLink(editLinkId, url, title);
+      showToast('Quick link updated');
+    } else {
+      // Add new link
+      await addQuickLink(url, title);
+      showToast('Quick link added');
+    }
+
+    // Close modal and reset
+    if (modal) {
+      modal.style.display = 'none';
+      delete modal.dataset.editLinkId;
+      // Reset modal title and button text
+      const modalTitle = modal.querySelector('.modal-header h3');
+      if (modalTitle) modalTitle.textContent = 'Add Quick Link';
+      const saveBtn = modal.querySelector('[data-action="save-quick-link"]');
+      if (saveBtn) saveBtn.textContent = 'Add Link';
+    }
     if (urlInput) urlInput.value = '';
     if (titleInput) titleInput.value = '';
 
-    showToast('Quick link added');
     await renderQuickLinks();
+    return;
+  }
+
+  // ---- Edit quick link ----
+  if (action === 'edit-quick-link') {
+    e.stopPropagation();
+    const linkId = actionEl.dataset.quickLinkId;
+    const linkUrl = actionEl.dataset.quickLinkUrl;
+    const linkTitle = actionEl.dataset.quickLinkTitle;
+    if (!linkId) return;
+
+    // Show modal with existing data
+    const modal = document.getElementById('addLinkModal');
+    const urlInput = document.getElementById('addLinkUrl');
+    const titleInput = document.getElementById('addLinkTitle');
+    const modalTitle = modal ? modal.querySelector('.modal-header h3') : null;
+
+    if (modal && urlInput && titleInput) {
+      // Set edit mode
+      modal.dataset.editLinkId = linkId;
+      urlInput.value = linkUrl || '';
+      titleInput.value = linkTitle || '';
+      // Change modal title for edit mode
+      if (modalTitle) modalTitle.textContent = 'Edit Quick Link';
+      // Change save button text
+      const saveBtn = modal.querySelector('[data-action="save-quick-link"]');
+      if (saveBtn) saveBtn.textContent = 'Save Changes';
+      modal.style.display = 'flex';
+      setTimeout(() => urlInput.focus(), 50);
+    }
     return;
   }
 
