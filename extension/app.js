@@ -467,7 +467,7 @@ async function renderQuickLinks() {
     const safeTitle = displayTitle.replace(/"/g, '&quot;');
 
     return `<div class="quick-link-card" data-quick-link-id="${link.id}" draggable="true" data-index="${index}">
-      <a href="${safeUrl}" target="_blank" rel="noopener" class="quick-link-link" draggable="false" title="${safeTitle}">
+      <a href="${safeUrl}" class="quick-link-link" draggable="false" title="${safeTitle}">
         <div class="quick-link-icon">
           ${faviconUrl ? `<img class="quick-link-favicon" src="${faviconUrl}" alt="" data-fallback="true">` : ''}
         </div>
@@ -618,12 +618,12 @@ function handlePointerUp(e) {
       cleanupDrag();
     }
   } else {
-    // This was a click, not a drag - open the link
+    // This was a click, not a drag - open the link in current tab
     const link = draggedQuickLink.querySelector('.quick-link-link');
     if (link) {
       const href = link.getAttribute('href');
       if (href) {
-        window.open(href, '_blank', 'noopener');
+        window.location.href = href;
       }
     }
     cleanupDrag();
