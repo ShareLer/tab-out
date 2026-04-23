@@ -1197,6 +1197,29 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   border-top: 1px solid var(--warm-gray);
 }
 
+/* ---- Recently Closed Search Input ---- */
+.recent-search {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--warm-gray);
+  border-radius: 6px;
+  background: var(--card-bg);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+  margin-bottom: 8px;
+}
+
+.recent-search:focus {
+  border-color: var(--accent-amber);
+}
+
+.recent-search::placeholder {
+  color: var(--muted);
+}
+
 .archive-toggle {
   font-family: 'DM Sans', sans-serif;
   font-size: 12px;

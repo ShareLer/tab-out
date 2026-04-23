@@ -174,7 +174,7 @@ async function closeDuplicateTabs(urls, keepOne = true) {
    RECENTLY CLOSED — chrome.storage.local
 
    Records tabs that were recently closed for quick recovery.
-   Limited to 50 most recent entries.
+   Limited to 100 most recent entries.
 
    Data shape stored under the "recentlyClosed" key:
    [
@@ -189,7 +189,7 @@ async function closeDuplicateTabs(urls, keepOne = true) {
    ]
    ---------------------------------------------------------------- */
 
-const MAX_RECENTLY_CLOSED = 50;
+const MAX_RECENTLY_CLOSED = 100;
 
 /**
  * addToRecentlyClosed(tab)
@@ -1414,13 +1414,15 @@ function renderDomainCard(group, isPinned = false) {
  *
  * Reads recently closed tabs from chrome.storage.local and renders
  * the right-side column. Always visible, shows empty state when no items.
+ * Supports search filtering via the recentSearch input.
  */
-async function renderRecentlyClosedColumn() {
+async function renderRecentlyClosedColumn(searchQuery = '') {
   const column    = document.getElementById('deferredColumn');
   const list      = document.getElementById('deferredList');
   const empty     = document.getElementById('deferredEmpty');
   const countEl   = document.getElementById('deferredCount');
   const clearBtn  = document.querySelector('[data-action="clear-all-recent"]');
+  const searchInput = document.getElementById('recentSearch');
 
   if (!column) return;
 
@@ -1436,12 +1438,43 @@ async function renderRecentlyClosedColumn() {
       empty.style.display = 'block';
       countEl.textContent = '';
       if (clearBtn) clearBtn.style.display = 'none';
+      if (searchInput) searchInput.style.display = 'none';
     } else {
-      // Render items
-      countEl.textContent = `${items.length}`;
-      list.innerHTML = items.map(item => renderRecentlyClosedItem(item)).join('');
-      list.style.display = 'block';
-      empty.style.display = 'none';
+      // Filter items based on search query
+      const filteredItems = searchQuery
+        ? items.filter(item => {
+            const query = searchQuery.toLowerCase();
+            const title = (item.title || item.url || '').toLowerCase();
+            const url = (item.url || '').toLowerCase();
+            return title.includes(query) || url.includes(query);
+          })
+        : items;
+
+      // Show/hide search input based on item count
+      if (searchInput) {
+        searchInput.style.display = items.length > 0 ? 'block' : 'none';
+      }
+
+      // Update count to show filtered count if searching
+      if (searchQuery && filteredItems.length !== items.length) {
+        countEl.textContent = `${filteredItems.length}/${items.length}`;
+      } else {
+        countEl.textContent = `${items.length}`;
+      }
+
+      // Render filtered items
+      list.innerHTML = filteredItems.map(item => renderRecentlyClosedItem(item)).join('');
+      list.style.display = filteredItems.length > 0 ? 'block' : 'none';
+
+      // Show "no results" message if search has no matches
+      if (searchQuery && filteredItems.length === 0) {
+        empty.style.display = 'block';
+        empty.textContent = `No results for "${searchQuery}"`;
+      } else {
+        empty.style.display = 'none';
+        empty.textContent = 'No recently closed tabs';
+      }
+
       if (clearBtn) clearBtn.style.display = 'inline-flex';
     }
 
@@ -1453,6 +1486,7 @@ async function renderRecentlyClosedColumn() {
     empty.style.display = 'block';
     countEl.textContent = '';
     if (clearBtn) clearBtn.style.display = 'none';
+    if (searchInput) searchInput.style.display = 'none';
   }
 }
 
@@ -2433,6 +2467,41 @@ function setupTabChangeListener() {
 
 
 /* ----------------------------------------------------------------
+   RECENTLY CLOSED SEARCH
+
+   Allow user to search through recently closed tabs by title or URL.
+   ---------------------------------------------------------------- */
+
+function initRecentlyClosedSearch() {
+  const searchInput = document.getElementById('recentSearch');
+  if (!searchInput) return;
+
+  // Debounce timer for search
+  let searchTimer = null;
+
+  searchInput.addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+
+    // Debounce to avoid rapid re-renders
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      renderRecentlyClosedColumn(query);
+      searchTimer = null;
+    }, 150);
+  });
+
+  // Clear search on Escape key
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      searchInput.value = '';
+      renderRecentlyClosedColumn('');
+      searchInput.blur();
+    }
+  });
+}
+
+
+/* ----------------------------------------------------------------
    RECENTLY CLOSED COLLAPSE TOGGLE
 
    Allow user to collapse/expand the Recently Closed section.
@@ -2473,3 +2542,4 @@ renderDashboard();
 initSidebarResizer();
 setupTabChangeListener();
 initRecentlyClosedToggle();
+initRecentlyClosedSearch();

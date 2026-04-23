@@ -12,7 +12,7 @@
  *   Red    (#b35a5a) → 21+ tabs   (time to cull!)
  */
 
-const MAX_RECENTLY_CLOSED = 50;
+const MAX_RECENTLY_CLOSED = 100;
 
 // Cache of all open tabs' info (keyed by tabId)
 // This allows us to get URL/title when a tab is closed (onRemoved doesn't provide it)
